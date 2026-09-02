@@ -12,8 +12,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Modelo {
-    public static class Activo {
-        private String nombreModelo;
-        private LocalDate fechaEol;
-    }
+    private String nombreModelo;
+    private LocalDate fechaEol;
+
 }
