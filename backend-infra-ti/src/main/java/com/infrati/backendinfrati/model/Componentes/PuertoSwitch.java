@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class PuertoSwitch {
+    private String id;
     private String numero_puerto;
     private String velocidad;
     private EstadoEnum estado;
