@@ -17,7 +17,7 @@ public class Switch extends Activo{
     private String tipoRED;
     private int cantidad_puertos;
     private int cantidad_puertos_ocupados;
-
+    private String modo_operacion;
     private Double cpuTotalGhz;
     private Double cpuUsoGhz;
     private Double ramTotalGb;

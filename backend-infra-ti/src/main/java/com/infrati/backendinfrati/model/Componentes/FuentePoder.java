@@ -2,6 +2,15 @@ package com.infrati.backendinfrati.model.Componentes;
 
 import com.infrati.backendinfrati.model.Enum.CorrienteEnum;
 import com.infrati.backendinfrati.model.Enum.EstadoEnum;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 
 public class FuentePoder {
     private Long id;

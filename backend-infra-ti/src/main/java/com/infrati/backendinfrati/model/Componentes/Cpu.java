@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class Cpu {
     private Long id;
     private String numero_serial;
+    private String familia;
     private String marca;
     private String modelo;
     private Double velocidad_ghz;

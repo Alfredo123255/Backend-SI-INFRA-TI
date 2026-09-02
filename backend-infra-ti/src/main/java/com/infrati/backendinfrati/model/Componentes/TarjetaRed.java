@@ -15,6 +15,7 @@ import java.util.List;
 public class TarjetaRed {
     private Long id;
     private String numero_serial;
+    private String marca;
     private String modelo;
     private EstadoEnum estado;
     private int cantidad_puertos;
