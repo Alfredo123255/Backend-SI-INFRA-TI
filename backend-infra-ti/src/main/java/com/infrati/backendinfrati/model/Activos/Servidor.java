@@ -1,6 +1,7 @@
 package com.infrati.backendinfrati.model.Activos;
 
 import com.infrati.backendinfrati.model.Componentes.*;
+import com.infrati.backendinfrati.model.Enum.TipoServidorEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -18,7 +19,7 @@ public class Servidor extends Activo {
     private String version_so;
     private LocalDate fecha_soporte_so;
     private Long idChasisSlot;
-
+    private TipoServidorEnum tipo;
     private Double cpuTotalGhz;
     private Double cpuUsoGhz;
     private Double ramTotalGb;
