@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.infrati.backendinfrati.repository.ExcelUtils.getDouble;
 import static com.infrati.backendinfrati.repository.ExcelUtils.getInteger;
 import static com.infrati.backendinfrati.repository.ExcelUtils.getString;
 
@@ -89,6 +90,8 @@ public class SwitchExcelRepository implements SwitchRepository {
                         .cantidad_puertos(getInteger(fila, 3) == null ? 0 : getInteger(fila, 3))
                         .cantidad_puertos_ocupados(getInteger(fila, 4) == null ? 0 : getInteger(fila, 4))
                         .puertos(puertosPorSwitch.getOrDefault(id, List.of()))
+                        .cpuUsoGhz(getDouble(fila, 5))
+                        .ramUsoGb(getDouble(fila, 6))
                         .cpuTotalGhz(ServidorExcelRepository.sumarCpuGhz(cpus))
                         .ramTotalGb(ServidorExcelRepository.sumarRamGb(rams))
                         .cpus(cpus)

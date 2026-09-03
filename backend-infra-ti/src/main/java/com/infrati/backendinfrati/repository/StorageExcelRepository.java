@@ -93,6 +93,8 @@ public class StorageExcelRepository implements StorageRepository {
                         .capacidad_total_TB(getDouble(fila, 2))
                         .capacidad_usada_TB(getDouble(fila, 3))
                         .iops(getInteger(fila, 4) == null ? 0 : getInteger(fila, 4))
+                        .cpuUsoGhz(getDouble(fila, 5))
+                        .ramUsoGb(getDouble(fila, 6))
                         .cpuTotalGhz(ServidorExcelRepository.sumarCpuGhz(cpus))
                         .ramTotalGb(ServidorExcelRepository.sumarRamGb(rams))
                         .cpus(cpus)
