@@ -1,4 +1,4 @@
-package com.example.backendinfrati;
+package com.infrati.backendinfrati;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
