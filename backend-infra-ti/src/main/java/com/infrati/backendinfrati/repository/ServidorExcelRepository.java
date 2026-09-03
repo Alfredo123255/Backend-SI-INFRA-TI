@@ -293,7 +293,7 @@ public class ServidorExcelRepository implements ServidorRepository {
                     .generacion(getString(fila, 5))
                     .valocidad_mhz(getDouble(fila, 6))
                     .capacidad_gb(getInteger(fila, 7) == null ? 0 : getInteger(fila, 7))
-                    .estado(parseEstado(getString(fila, 10)))
+                    .estado(parseEstado(getString(fila, 8)))
                     .build();
             resultado.computeIfAbsent(activoId, k -> new ArrayList<>()).add(ram);
         }
@@ -314,10 +314,10 @@ public class ServidorExcelRepository implements ServidorRepository {
                     .id(getInteger(fila, 0).longValue())
                     .numero_serial(getString(fila, 2))
                     .marca(getString(fila, 3))
-                    .tipo(getString(fila, 5))
-                    .capacidad_GB(getDouble(fila, 6))
-                    .velocidad_rpm(getInteger(fila, 7) == null ? 0 : getInteger(fila, 7))
-                    .estado(parseEstado(getString(fila, 8)))
+                    .tipo(getString(fila, 4))
+                    .capacidad_GB(getDouble(fila, 5))
+                    .velocidad_rpm(getInteger(fila, 6) == null ? 0 : getInteger(fila, 6))
+                    .estado(parseEstado(getString(fila, 7)))
                     .build();
             resultado.computeIfAbsent(activoId, k -> new ArrayList<>()).add(disco);
         }
@@ -341,8 +341,8 @@ public class ServidorExcelRepository implements ServidorRepository {
                     .numero_serial(getString(fila, 2))
                     .marca(getString(fila, 3))
                     .modelo(getString(fila, 4))
-                    .cantidad_puertos(getInteger(fila, 6) == null ? 0 : getInteger(fila, 6))
-                    .estado(parseEstado(getString(fila, 7)))
+                    .cantidad_puertos(getInteger(fila, 5) == null ? 0 : getInteger(fila, 5))
+                    .estado(parseEstado(getString(fila, 6)))
                     .puertos(puertosPorTarjeta.getOrDefault(tarjetaId, List.of()))
                     .build();
             resultado.computeIfAbsent(activoId, k -> new ArrayList<>()).add(tarjeta);

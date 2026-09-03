@@ -117,7 +117,7 @@ public class SwitchExcelRepository implements SwitchRepository {
                     .id(getString(fila, 0))
                     .numero_puerto(getString(fila, 2))
                     .velocidad(getString(fila, 3))
-                    .estado(ServidorExcelRepository.parseEstado(getString(fila, 6)))
+                    .estado(ServidorExcelRepository.parseEstado(getString(fila, 4)))
                     .build();
             resultado.computeIfAbsent(switchId, k -> new ArrayList<>()).add(puerto);
         }
