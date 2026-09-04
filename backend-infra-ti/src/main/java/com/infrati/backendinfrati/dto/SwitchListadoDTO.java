@@ -8,6 +8,8 @@ import lombok.Data;
 @Builder
 public class SwitchListadoDTO {
     private Long id;
+    private String numeroSerial;
+    private String fabricante;
     private String modelo;
     private String hostname;
     private String ubicacion;

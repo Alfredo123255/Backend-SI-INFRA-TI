@@ -30,6 +30,8 @@ public class ChasisBladeService {
     private ChasisBladeListadoDTO aListadoDTO(ChasisBlade c) {
         return ChasisBladeListadoDTO.builder()
                 .id(c.getId())
+                .numeroSerial(c.getNumero_serie())
+                .fabricante(c.getFabricante())
                 .hostname(c.getHostname())
                 .cluster(c.getCluster())
                 .ubicacion(c.getUbicacion())

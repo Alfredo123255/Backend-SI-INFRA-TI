@@ -31,6 +31,8 @@ public class SwitchService {
     private SwitchListadoDTO aListadoDTO(Switch equipo) {
         return SwitchListadoDTO.builder()
                 .id(equipo.getId())
+                .numeroSerial(equipo.getNumero_serie())
+                .fabricante(equipo.getFabricante())
                 .modelo(equipo.getModelo())
                 .hostname(equipo.getHostname())
                 .ubicacion(equipo.getUbicacion())

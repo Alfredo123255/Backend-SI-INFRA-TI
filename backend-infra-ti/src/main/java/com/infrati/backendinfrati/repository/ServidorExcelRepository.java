@@ -321,6 +321,7 @@ public class ServidorExcelRepository implements ServidorRepository {
                     .capacidad_GB(getDouble(fila, 5))
                     .velocidad_rpm(getInteger(fila, 6) == null ? 0 : getInteger(fila, 6))
                     .estado(parseEstado(getString(fila, 7)))
+                    .modelo(getString(fila, 8))
                     .build();
             resultado.computeIfAbsent(activoId, k -> new ArrayList<>()).add(disco);
         }

@@ -8,6 +8,8 @@ import lombok.Data;
 @Builder
 public class ChasisBladeListadoDTO {
     private Long id;
+    private String numeroSerial;
+    private String fabricante;
     private String hostname;
     private String cluster;
     private String ubicacion;

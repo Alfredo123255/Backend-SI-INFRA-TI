@@ -30,7 +30,9 @@ public class ServidorService {
     private ServidorListadoDTO aListadoDTO(Servidor s) {
         return ServidorListadoDTO.builder()
                 .id(s.getId())
+                .numeroSerial(s.getNumero_serie())
                 .tipo(s.getTipo())
+                .fabricante(s.getFabricante())
                 .modelo(s.getModelo())
                 .hostname(s.getHostname())
                 .ubicacion(s.getUbicacion())

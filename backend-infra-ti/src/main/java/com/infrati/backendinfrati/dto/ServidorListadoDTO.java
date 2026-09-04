@@ -9,7 +9,9 @@ import lombok.Data;
 @Builder
 public class ServidorListadoDTO {
     private Long id;
+    private String numeroSerial;
     private TipoServidorEnum tipo;
+    private String fabricante;
     private String modelo;
     private String hostname;
     private String ubicacion;
