@@ -8,10 +8,12 @@ import lombok.Data;
 @Builder
 public class SwitchListadoDTO {
     private Long id;
+    private String modelo;
     private String hostname;
     private String ubicacion;
     private String estadoOperativo;
     private String tipoRed;
+    private String velocidad;
     private Integer cantidadPuertosOcupados;
     private Integer cantidadPuertosTotales;
     private String ipGestion;

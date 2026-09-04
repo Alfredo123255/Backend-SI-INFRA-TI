@@ -1,0 +1,30 @@
+﻿
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.1)
+
+2026-09-03T23:38:37.290-05:00  INFO 32756 --- [backend-infra-ti] [  restartedMain] c.i.b.BackendInfraTiApplication          : Starting BackendInfraTiApplication using Java 21.0.8 with PID 32756 (C:\INGESOFT\Backend-SI-INFRA-TI\backend-infra-ti\target\classes started by jenny in C:\INGESOFT\Backend-SI-INFRA-TI\backend-infra-ti)
+2026-09-03T23:38:37.295-05:00  INFO 32756 --- [backend-infra-ti] [  restartedMain] c.i.b.BackendInfraTiApplication          : No active profile set, falling back to 1 default profile: "default"
+2026-09-03T23:38:37.366-05:00  INFO 32756 --- [backend-infra-ti] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2026-09-03T23:38:37.366-05:00  INFO 32756 --- [backend-infra-ti] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2026-09-03T23:38:39.069-05:00  INFO 32756 --- [backend-infra-ti] [  restartedMain] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8090 (http)
+2026-09-03T23:38:39.098-05:00  INFO 32756 --- [backend-infra-ti] [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-03T23:38:39.099-05:00  INFO 32756 --- [backend-infra-ti] [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-09-03T23:38:39.178-05:00  INFO 32756 --- [backend-infra-ti] [  restartedMain] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1809 ms
+2026-09-03T23:38:41.537-05:00  INFO 32756 --- [backend-infra-ti] [  restartedMain] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8090 (http) with context path '/'
+2026-09-03T23:38:41.546-05:00  INFO 32756 --- [backend-infra-ti] [  restartedMain] c.i.b.BackendInfraTiApplication          : Started BackendInfraTiApplication in 5.002 seconds (process running for 5.817)
+2026-09-03T23:39:16.225-05:00  INFO 32756 --- [backend-infra-ti] [nio-8090-exec-3] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-09-03T23:39:16.226-05:00  INFO 32756 --- [backend-infra-ti] [nio-8090-exec-3] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-09-03T23:39:16.228-05:00  INFO 32756 --- [backend-infra-ti] [nio-8090-exec-3] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.1.1:run (default-cli) on project backend-infra-ti: Process terminated with exit code: -1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

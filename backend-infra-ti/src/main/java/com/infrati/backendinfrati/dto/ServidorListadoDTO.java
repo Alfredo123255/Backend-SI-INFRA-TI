@@ -10,6 +10,7 @@ import lombok.Data;
 public class ServidorListadoDTO {
     private Long id;
     private TipoServidorEnum tipo;
+    private String modelo;
     private String hostname;
     private String ubicacion;
     private String estadoOperativo;

@@ -30,6 +30,7 @@ public class StorageService {
     private StorageListadoDTO aListadoDTO(Storage s) {
         return StorageListadoDTO.builder()
                 .id(s.getId())
+                .modelo(s.getModelo())
                 .hostname(s.getHostname())
                 .ubicacion(s.getUbicacion())
                 .estadoOperativo(s.getEstado_operativo() == null ? null : s.getEstado_operativo().name())

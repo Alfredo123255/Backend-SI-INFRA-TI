@@ -31,6 +31,7 @@ public class ServidorService {
         return ServidorListadoDTO.builder()
                 .id(s.getId())
                 .tipo(s.getTipo())
+                .modelo(s.getModelo())
                 .hostname(s.getHostname())
                 .ubicacion(s.getUbicacion())
                 .estadoOperativo(s.getEstado_operativo() == null ? null : s.getEstado_operativo().name())
