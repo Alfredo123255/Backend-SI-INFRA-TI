@@ -27,10 +27,6 @@ public class StorageService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Storage " + id + " no encontrado"));
     }
 
-    public List<Storage> buscarParaExportar(String estado, String ubicacion, String proyecto, String fabricante, String q) {
-        return repository.buscar(estado, ubicacion, proyecto, fabricante, q);
-    }
-
     private StorageListadoDTO aListadoDTO(Storage s) {
         return StorageListadoDTO.builder()
                 .id(s.getId())

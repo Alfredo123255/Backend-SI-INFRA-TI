@@ -27,11 +27,6 @@ public class ServidorService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Servidor " + id + " no encontrado"));
     }
 
-    /** Usado tambien por ExportService, para exportar exactamente lo que esta filtrado. */
-    public List<ServidorListadoDTO> buscarParaExportar(String estado, String ubicacion, String proyecto, String fabricante, String q) {
-        return listar(estado, ubicacion, proyecto, fabricante, q);
-    }
-
     private ServidorListadoDTO aListadoDTO(Servidor s) {
         return ServidorListadoDTO.builder()
                 .id(s.getId())
