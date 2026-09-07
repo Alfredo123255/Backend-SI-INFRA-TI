@@ -25,6 +25,7 @@ public abstract class Activo {
     private String responsable;
     private String orden_compra;
     private LocalDate fecha_eos;
+    private LocalDate fechaEol;
     private String version_firmware;
     private LocalDate ultima_actualizacion;
     private String cluster;

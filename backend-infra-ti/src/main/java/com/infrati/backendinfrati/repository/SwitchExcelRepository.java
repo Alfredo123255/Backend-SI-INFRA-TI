@@ -17,6 +17,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Repository;
 
 import java.io.InputStream;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -47,6 +48,7 @@ public class SwitchExcelRepository implements SwitchRepository {
         try (InputStream in = archivo.getInputStream(); Workbook wb = WorkbookFactory.create(in)) {
 
             var comunPorId = ServidorExcelRepository.cargarActivosTI(wb.getSheet("ActivosTI"), EnumSet.of(TipoActivoEnum.SWITCH));
+            Map<String, LocalDate> eolPorModelo = ServidorExcelRepository.cargarModelos(wb);
             Map<Long, List<Cpu>> cpuPorActivo = ServidorExcelRepository.cargarCpu(wb.getSheet("Cpu"));
             Map<Long, List<Ram>> ramPorActivo = ServidorExcelRepository.cargarRam(wb.getSheet("Ram"));
             Map<Long, List<PuertoSwitch>> puertosPorSwitch = cargarPuertos(wb.getSheet("PuertoSwitch"));
@@ -81,6 +83,7 @@ public class SwitchExcelRepository implements SwitchRepository {
                         .responsable(comun.responsable())
                         .orden_compra(comun.ordenCompra())
                         .fecha_eos(comun.fechaEos())
+                        .fechaEol(eolPorModelo.get(comun.modelo()))
                         .version_firmware(comun.versionFirmware())
                         .ultima_actualizacion(comun.ultimaActualizacion())
                         .temperatura(comun.temperatura())

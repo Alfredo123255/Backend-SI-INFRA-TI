@@ -65,6 +65,7 @@ public class ServidorExcelRepository implements ServidorRepository {
 
             Map<Long, ActivoTIComun> comunPorId = cargarActivosTI(wb.getSheet("ActivosTI"),
                     EnumSet.of(TipoActivoEnum.SERVIDOR));
+            Map<String, LocalDate> eolPorModelo = cargarModelos(wb);
             Map<Long, List<Cpu>> cpuPorActivo = cargarCpu(wb.getSheet("Cpu"));
             Map<Long, List<Ram>> ramPorActivo = cargarRam(wb.getSheet("Ram"));
             Map<Long, List<Disco>> discosPorActivo = cargarDiscos(wb.getSheet("Discos"));
@@ -102,6 +103,7 @@ public class ServidorExcelRepository implements ServidorRepository {
                         .responsable(comun.responsable())
                         .orden_compra(comun.ordenCompra())
                         .fecha_eos(comun.fechaEos())
+                        .fechaEol(eolPorModelo.get(comun.modelo()))
                         .version_firmware(comun.versionFirmware())
                         .ultima_actualizacion(comun.ultimaActualizacion())
                         .temperatura(comun.temperatura())
@@ -144,6 +146,21 @@ public class ServidorExcelRepository implements ServidorRepository {
             }
         }
         return algunDato ? redondear(total) : null;
+    }
+
+    static Map<String, LocalDate> cargarModelos(Workbook wb) {
+        Map<String, LocalDate> resultado = new LinkedHashMap<>();
+        Sheet hoja = wb.getSheet("Modelo");
+        if (hoja == null) {
+            return resultado;
+        }
+        for (Row fila : hoja) {
+            if (fila.getRowNum() == 0 || getString(fila, 0) == null) {
+                continue;
+            }
+            resultado.put(getString(fila, 0), getLocalDate(fila, 1));
+        }
+        return resultado;
     }
 
     static Double sumarRamGb(List<Ram> rams) {
