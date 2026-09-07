@@ -16,4 +16,5 @@ public class ChasisSlot {
     private Integer numeroSlot;
     private EstadoSlotEnum estado;
     private String hostanameServidor;
+    private Long servidorId;
 }

@@ -49,7 +49,8 @@ public class ChasisBladeExcelRepository implements ChasisBladeRepository {
 
             var comunPorId = ServidorExcelRepository.cargarActivosTI(wb.getSheet("ActivosTI"), EnumSet.of(TipoActivoEnum.CHASIS));
             Map<String, LocalDate> eolPorModelo = ServidorExcelRepository.cargarModelos(wb);
-            Map<Long, List<ChasisSlot>> slotsPorChasis = cargarChasisSlots(wb.getSheet("ChasisSlot"));
+            Map<Long, Long> servidorPorSlot = cargarServidorPorSlot(wb);
+            Map<Long, List<ChasisSlot>> slotsPorChasis = cargarChasisSlots(wb.getSheet("ChasisSlot"), servidorPorSlot);
             Map<Long, List<TarjetaRed>> redPorActivo = ServidorExcelRepository.cargarTarjetasRed(wb.getSheet("TarjetasRed"), wb.getSheet("PuertoTarjetaRed"));
             Map<Long, List<FuentePoder>> fuentesPorActivo = ServidorExcelRepository.cargarFuentesPoder(wb.getSheet("FuentesPoder"));
             Map<Long, List<Ventilador>> ventiladoresPorActivo = ServidorExcelRepository.cargarVentiladores(wb.getSheet("Ventiladores"));
@@ -98,7 +99,26 @@ public class ChasisBladeExcelRepository implements ChasisBladeRepository {
         }
     }
 
-    private Map<Long, List<ChasisSlot>> cargarChasisSlots(Sheet hoja) {
+    private Map<Long, Long> cargarServidorPorSlot(Workbook wb) {
+        Map<Long, Long> resultado = new LinkedHashMap<>();
+        Sheet hoja = wb.getSheet("Servidores");
+        if (hoja == null) {
+            return resultado;
+        }
+        for (Row fila : hoja) {
+            if (fila.getRowNum() == 0 || getInteger(fila, 0) == null) {
+                continue;
+            }
+            Long servidorId = getInteger(fila, 0).longValue();
+            Integer idChasisSlot = getInteger(fila, 3);
+            if (idChasisSlot != null) {
+                resultado.put(idChasisSlot.longValue(), servidorId);
+            }
+        }
+        return resultado;
+    }
+
+    private Map<Long, List<ChasisSlot>> cargarChasisSlots(Sheet hoja, Map<Long, Long> servidorPorSlot) {
         Map<Long, List<ChasisSlot>> resultado = new LinkedHashMap<>();
         if (hoja == null) {
             return resultado;
@@ -108,12 +128,14 @@ public class ChasisBladeExcelRepository implements ChasisBladeRepository {
                 continue;
             }
             Long chasisId = getInteger(fila, 1).longValue();
+            Long slotId = getInteger(fila, 0) == null ? null : getInteger(fila, 0).longValue();
             ChasisSlot slot = ChasisSlot.builder()
-                    .id(getInteger(fila, 0) == null ? null : getInteger(fila, 0).longValue())
+                    .id(slotId)
                     .chasisID(chasisId)
                     .numeroSlot(getInteger(fila, 2))
                     .estado(parseEstadoSlot(getString(fila, 3)))
                     .hostanameServidor(getString(fila, 4))
+                    .servidorId(slotId == null ? null : servidorPorSlot.get(slotId))
                     .build();
             resultado.computeIfAbsent(chasisId, k -> new ArrayList<>()).add(slot);
         }
