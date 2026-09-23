@@ -1,12 +1,8 @@
-package com.infrati.backendinfrati.model.Componentes;
+package com.infrati.backendinfrati.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.infrati.backendinfrati.model.Activos.Activo;
-import com.infrati.backendinfrati.model.Enum.EstadoEnum;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -22,37 +18,39 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "controladora_raid")
+@Table(name = "historico_estado")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class ControladoraRAID {
+public class HistoricoEstado {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @JdbcTypeCode(SqlTypes.INTEGER)
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "modelo")
-    private String modelo;
-
-    @Column(name = "raid")
-    private String raid;
-
-    @Column(name = "numero_serial")
-    private String numero_serial;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "estado")
-    private EstadoEnum estado;
-
-    @ManyToOne
-    @JoinColumn(name = "activo_id")
-    @JsonIgnore
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "activo_id", nullable = false)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Activo activo;
+
+    @Column(name = "componente_tipo")
+    private String componenteTipo;
+
+    @Column(name = "componente_sn")
+    private String componenteSn;
+
+    @Column(name = "campo")
+    private String campo;
+
+    @Column(name = "valor_nuevo")
+    private String valorNuevo;
+
+    @Column(name = "fecha_cambio")
+    private LocalDateTime fechaCambio;
 }

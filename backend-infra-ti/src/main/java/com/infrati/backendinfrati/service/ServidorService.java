@@ -4,27 +4,48 @@ import com.infrati.backendinfrati.dto.ServidorListadoDTO;
 import com.infrati.backendinfrati.model.Activos.Servidor;
 import com.infrati.backendinfrati.repository.ServidorRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 public class ServidorService {
 
     private final ServidorRepository repository;
+    private final DatosDerivadosActivo datosDerivados;
 
-    public ServidorService(ServidorRepository repository) {
+    public ServidorService(ServidorRepository repository, DatosDerivadosActivo datosDerivados) {
         this.repository = repository;
+        this.datosDerivados = datosDerivados;
     }
 
     public List<ServidorListadoDTO> listar(String estado, String ubicacion, String proyecto, String fabricante, String q) {
         return repository.buscar(estado, ubicacion, proyecto, fabricante, q).stream()
+                .map(this::completarTotalesYUso)
                 .map(this::aListadoDTO)
                 .toList();
     }
 
     public Servidor detalle(Long id) {
         return repository.buscarPorId(id)
+                .map(this::completarTotalesYUso)
+                .map(this::completarFechaEol)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Servidor " + id + " no encontrado"));
+    }
+
+    private Servidor completarFechaEol(Servidor s) {
+        datosDerivados.resolverFechaEol(s);
+        return s;
+    }
+
+    private Servidor completarTotalesYUso(Servidor s) {
+        s.setCpuTotalGhz(TotalesComponentes.sumarCpuGhz(s.getCpus()));
+        s.setRamTotalGb(TotalesComponentes.sumarRamGb(s.getMemoriaRAM()));
+        s.setCpuUsoGhz(datosDerivados.ultimaMetrica(s.getId(), DatosDerivadosActivo.METRICA_CPU_USO_GHZ));
+        s.setRamUsoGb(datosDerivados.ultimaMetrica(s.getId(), DatosDerivadosActivo.METRICA_RAM_USO_GB));
+        s.setCapacidadDiscosGb(TotalesComponentes.sumarCapacidadDiscos(s.getDiscos()));
+        return s;
     }
 
     private ServidorListadoDTO aListadoDTO(Servidor s) {

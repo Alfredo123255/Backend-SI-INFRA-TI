@@ -5,16 +5,20 @@ import com.infrati.backendinfrati.model.Activos.Switch;
 import com.infrati.backendinfrati.model.Componentes.PuertoSwitch;
 import com.infrati.backendinfrati.repository.SwitchRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 public class SwitchService {
 
     private final SwitchRepository repository;
+    private final DatosDerivadosActivo datosDerivados;
 
-    public SwitchService(SwitchRepository repository) {
+    public SwitchService(SwitchRepository repository, DatosDerivadosActivo datosDerivados) {
         this.repository = repository;
+        this.datosDerivados = datosDerivados;
     }
 
     public List<SwitchListadoDTO> listar(String estado, String ubicacion, String proyecto, String fabricante, String q) {
@@ -25,7 +29,22 @@ public class SwitchService {
 
     public Switch detalle(Long id) {
         return repository.buscarPorId(id)
+                .map(this::completarTotalesYUso)
+                .map(this::completarFechaEol)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Switch " + id + " no encontrado"));
+    }
+
+    private Switch completarFechaEol(Switch equipo) {
+        datosDerivados.resolverFechaEol(equipo);
+        return equipo;
+    }
+
+    private Switch completarTotalesYUso(Switch equipo) {
+        equipo.setCpuTotalGhz(TotalesComponentes.sumarCpuGhz(equipo.getCpus()));
+        equipo.setRamTotalGb(TotalesComponentes.sumarRamGb(equipo.getMemoriaRAM()));
+        equipo.setCpuUsoGhz(datosDerivados.ultimaMetrica(equipo.getId(), DatosDerivadosActivo.METRICA_CPU_USO_GHZ));
+        equipo.setRamUsoGb(datosDerivados.ultimaMetrica(equipo.getId(), DatosDerivadosActivo.METRICA_RAM_USO_GB));
+        return equipo;
     }
 
     private SwitchListadoDTO aListadoDTO(Switch equipo) {
