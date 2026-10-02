@@ -42,4 +42,5 @@ public class ServidorController {
     public Servidor detalle(@PathVariable Long id) {
         return service.detalle(id);
     }
+
 }

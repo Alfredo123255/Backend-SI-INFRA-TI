@@ -8,6 +8,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import org.hibernate.annotations.DynamicUpdate;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -16,6 +17,7 @@ import lombok.experimental.SuperBuilder;
 import java.util.List;
 
 @Entity
+@DynamicUpdate
 @Table(name = "switch")
 @PrimaryKeyJoinColumn(name = "id")
 @Data

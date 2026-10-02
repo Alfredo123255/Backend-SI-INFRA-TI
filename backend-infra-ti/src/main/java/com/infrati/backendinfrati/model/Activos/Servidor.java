@@ -12,6 +12,7 @@ import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.type.SqlTypes;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,6 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Entity
+@DynamicUpdate
 @Table(name = "servidor")
 @PrimaryKeyJoinColumn(name = "id")
 @Data

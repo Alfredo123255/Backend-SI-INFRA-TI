@@ -1,6 +1,9 @@
 package com.infrati.backendinfrati.controller;
 
 import com.infrati.backendinfrati.service.RecursoNoEncontradoException;
+import com.infrati.backendinfrati.exception.EtlException;
+import com.infrati.backendinfrati.exception.SolicitudInvalidaException;
+import com.infrati.backendinfrati.exception.RecursoDuplicadoException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +21,24 @@ import java.time.LocalDateTime;
 public class ManejoGlobalExcepciones {
 
     private static final Logger log = LoggerFactory.getLogger(ManejoGlobalExcepciones.class);
+
+    @ExceptionHandler(EtlException.class)
+    public ResponseEntity<RespuestaError> manejarEtl(EtlException excepcion, HttpServletRequest request) {
+        log.warn("El ETL no completó {}: estado {}", request.getRequestURI(), excepcion.getEstado().value());
+        return respuesta(excepcion.getEstado(), excepcion.getMessage(), request);
+    }
+
+    @ExceptionHandler(SolicitudInvalidaException.class)
+    public ResponseEntity<RespuestaError> manejarSolicitudInvalida(
+            SolicitudInvalidaException excepcion, HttpServletRequest request) {
+        return respuesta(HttpStatus.BAD_REQUEST, excepcion.getMessage(), request);
+    }
+
+    @ExceptionHandler(RecursoDuplicadoException.class)
+    public ResponseEntity<RespuestaError> manejarRecursoDuplicado(
+            RecursoDuplicadoException excepcion, HttpServletRequest request) {
+        return respuesta(HttpStatus.CONFLICT, excepcion.getMessage(), request);
+    }
 
     @ExceptionHandler(RecursoNoEncontradoException.class)
     public ResponseEntity<RespuestaError> manejarRecursoNoEncontrado(

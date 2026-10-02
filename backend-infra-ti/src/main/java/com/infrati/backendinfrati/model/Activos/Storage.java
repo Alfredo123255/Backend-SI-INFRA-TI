@@ -9,6 +9,7 @@ import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.type.SqlTypes;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -18,6 +19,7 @@ import lombok.experimental.SuperBuilder;
 import java.util.List;
 
 @Entity
+@DynamicUpdate
 @Table(name = "storage")
 @PrimaryKeyJoinColumn(name = "id")
 @Data
