@@ -73,3 +73,17 @@ Las claves SNMP se leen desde la BD para el monitoreo posterior. El backend no n
 `responsable`, `ordenCompra` y `fechaEos` aplican a servidor (rack o blade), chasis, storage y switch. `fechaSoporteSo` aplica solo a servidores; `tipoRed` y `modoOperacion` solo a switches; `iops` nominal solo a storage. Enviar un campo no nulo incompatible con el tipo devuelve `400`.
 
 Solo se actualizan los campos no nulos. Los omitidos o enviados como `null` conservan su valor previo. Se aceptan también los nombres de BD `orden_compra`, `fecha_eos`, `fecha_soporte_so`, `tipo_red` y `modo_operacion`. La respuesta devuelve los datos administrativos actuales. Hostname, estado, IP, componentes, métricas y `ultima_actualizacion` siguen bajo control del ETL.
+
+## Modo mantenimiento
+
+`PATCH http://localhost:8080/api/activos/{id}/mantenimiento`
+
+```json
+{
+  "mantenimientoActivo": true,
+  "responsable": "Equipo de Operaciones",
+  "motivo": "Cambio de fuente de poder"
+}
+```
+
+Envía `false` para finalizar el mantenimiento. `mantenimientoActivo` es obligatorio; `responsable` y `motivo` son opcionales y quedan en la descripción del evento. La respuesta contiene `activoId`, `mantenimientoActivo` y `cambioRegistrado`. Una solicitud repetida con el mismo valor no genera otro evento. Un activo en estado `Baja` no puede entrar en mantenimiento. Esta operación no cambia `estado_operativo`, `ultima_actualizacion` ni las métricas; el programador SNMP continúa ejecutándose. La supresión de alertas debe leer `mantenimiento_activo` cuando se implemente.

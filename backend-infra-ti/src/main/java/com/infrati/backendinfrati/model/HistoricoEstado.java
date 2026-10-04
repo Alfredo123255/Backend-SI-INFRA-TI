@@ -51,6 +51,9 @@ public class HistoricoEstado {
     @Column(name = "valor_nuevo")
     private String valorNuevo;
 
+    @Column(name = "descripcion")
+    private String descripcion;
+
     @Column(name = "fecha_cambio")
     private LocalDateTime fechaCambio;
 }
