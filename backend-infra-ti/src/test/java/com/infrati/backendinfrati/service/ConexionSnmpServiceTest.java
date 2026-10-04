@@ -2,6 +2,7 @@ package com.infrati.backendinfrati.service;
 
 import com.infrati.backendinfrati.client.EtlClient;
 import com.infrati.backendinfrati.dto.ActivoCreado;
+import com.infrati.backendinfrati.dto.ProbarSolicitud;
 import com.infrati.backendinfrati.dto.RegistroConexionRequest;
 import com.infrati.backendinfrati.exception.EtlException;
 import com.infrati.backendinfrati.model.MonitoreoSnmp;
@@ -21,7 +22,7 @@ class ConexionSnmpServiceTest {
     private final EtlClient cliente = mock(EtlClient.class);
     private final MonitoreoSnmpRepository conexiones = mock(MonitoreoSnmpRepository.class);
     private final ClusterRepository clusters = mock(ClusterRepository.class);
-    private final ConexionSnmpService servicio = new ConexionSnmpService(cliente, conexiones, clusters);
+    private final ConexionSnmpService servicio = new ConexionSnmpService(cliente, conexiones, clusters, "");
 
     private static RegistroConexionRequest solicitud() {
         return new RegistroConexionRequest("127.0.0.20:16600", "monitor", "clave-auth",
@@ -62,5 +63,27 @@ class ConexionSnmpServiceTest {
         when(conexiones.eliminarSiNoVinculada(12L)).thenReturn(1);
         assertThrows(EtlException.class, () -> servicio.registrarYCrear(solicitud()));
         verify(conexiones).eliminarSiNoVinculada(12L);
+    }
+
+    @Test
+    void resuelveClaveDePrivacidadSinPedirlaAlFormulario() {
+        ConexionSnmpService configurado = new ConexionSnmpService(cliente, conexiones, clusters,
+                "{\"127.0.0.13:16400|monitor\":\"clave-priv-configurada\"}");
+        configurado.probar(new ProbarSolicitud("127.0.0.13:16400", "monitor", "clave-auth", null));
+        verify(cliente).probar(argThat(req -> "clave-priv-configurada".equals(req.clavePrivacidad())));
+
+        when(clusters.existsById("CLUSTER-LAB-LOCAL")).thenReturn(true);
+        when(conexiones.saveAndFlush(any())).thenAnswer(invocacion -> {
+            MonitoreoSnmp fila = invocacion.getArgument(0);
+            assertEquals("clave-priv-configurada", fila.getClavePrivacidad());
+            fila.setId(13L);
+            return fila;
+        });
+        when(cliente.crearActivo(any())).thenReturn(new ActivoCreado(true, 45L, 13L,
+                "CLUSTER-LAB-LOCAL", "BL-45", "blade01", "HPE", "SERVIDOR", "Encendido",
+                "ProLiant BL460c Gen10", "DC-LAB-LOCAL", Map.of(), 4, 2));
+        assertEquals(45L, configurado.registrarYCrear(new RegistroConexionRequest(
+                "127.0.0.13:16400", "monitor", "clave-auth", null, 300,
+                "CLUSTER-LAB-LOCAL")).activoId());
     }
 }

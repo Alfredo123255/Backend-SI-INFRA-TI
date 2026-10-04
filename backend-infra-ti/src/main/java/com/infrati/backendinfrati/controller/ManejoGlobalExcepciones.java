@@ -7,8 +7,10 @@ import com.infrati.backendinfrati.exception.RecursoDuplicadoException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -62,6 +64,19 @@ public class ManejoGlobalExcepciones {
             HttpServletRequest request) {
         log.info("Endpoint no encontrado: {}", request.getRequestURI());
         return respuesta(HttpStatus.NOT_FOUND, "Endpoint no encontrado", request);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<RespuestaError> manejarMetodoNoPermitido(
+            HttpRequestMethodNotSupportedException excepcion,
+            HttpServletRequest request) {
+        log.info("Metodo {} no permitido en {}", request.getMethod(), request.getRequestURI());
+        var builder = ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+        if (excepcion.getSupportedHttpMethods() != null) {
+            builder.allow(excepcion.getSupportedHttpMethods().toArray(new HttpMethod[0]));
+        }
+        return builder.body(new RespuestaError(LocalDateTime.now(), 405, "Method Not Allowed",
+                "Metodo no permitido para esta ruta", request.getRequestURI()));
     }
 
     @ExceptionHandler(Exception.class)
