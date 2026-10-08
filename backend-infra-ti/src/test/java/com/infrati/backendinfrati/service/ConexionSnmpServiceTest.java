@@ -2,10 +2,16 @@ package com.infrati.backendinfrati.service;
 
 import com.infrati.backendinfrati.client.EtlClient;
 import com.infrati.backendinfrati.dto.ActivoCreado;
+import com.infrati.backendinfrati.dto.ActualizarConexionSnmpRequest;
+import com.infrati.backendinfrati.dto.ConexionSnmpDetalle;
+import com.infrati.backendinfrati.dto.ProbarRespuesta;
 import com.infrati.backendinfrati.dto.ProbarSolicitud;
 import com.infrati.backendinfrati.dto.RegistroConexionRequest;
 import com.infrati.backendinfrati.exception.EtlException;
+import com.infrati.backendinfrati.exception.SolicitudInvalidaException;
 import com.infrati.backendinfrati.model.MonitoreoSnmp;
+import com.infrati.backendinfrati.model.Activos.Activo;
+import com.infrati.backendinfrati.repository.ActivoRepository;
 import com.infrati.backendinfrati.repository.ClusterRepository;
 import com.infrati.backendinfrati.repository.MonitoreoSnmpRepository;
 import org.junit.jupiter.api.Test;
@@ -13,6 +19,7 @@ import org.mockito.InOrder;
 import org.springframework.http.HttpStatus;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,7 +29,8 @@ class ConexionSnmpServiceTest {
     private final EtlClient cliente = mock(EtlClient.class);
     private final MonitoreoSnmpRepository conexiones = mock(MonitoreoSnmpRepository.class);
     private final ClusterRepository clusters = mock(ClusterRepository.class);
-    private final ConexionSnmpService servicio = new ConexionSnmpService(cliente, conexiones, clusters, "");
+    private final ActivoRepository activos = mock(ActivoRepository.class);
+    private final ConexionSnmpService servicio = new ConexionSnmpService(cliente, conexiones, clusters, activos, "");
 
     private static RegistroConexionRequest solicitud() {
         return new RegistroConexionRequest("127.0.0.20:16600", "monitor", "clave-auth",
@@ -67,7 +75,7 @@ class ConexionSnmpServiceTest {
 
     @Test
     void resuelveClaveDePrivacidadSinPedirlaAlFormulario() {
-        ConexionSnmpService configurado = new ConexionSnmpService(cliente, conexiones, clusters,
+        ConexionSnmpService configurado = new ConexionSnmpService(cliente, conexiones, clusters, activos,
                 "{\"127.0.0.13:16400|monitor\":\"clave-priv-configurada\"}");
         configurado.probar(new ProbarSolicitud("127.0.0.13:16400", "monitor", "clave-auth", null));
         verify(cliente).probar(argThat(req -> "clave-priv-configurada".equals(req.clavePrivacidad())));
@@ -85,5 +93,56 @@ class ConexionSnmpServiceTest {
         assertEquals(45L, configurado.registrarYCrear(new RegistroConexionRequest(
                 "127.0.0.13:16400", "monitor", "clave-auth", null, 300,
                 "CLUSTER-LAB-LOCAL")).activoId());
+    }
+
+    @Test
+    void consultaNoExponeClavesYEditarFrecuenciaConservaCredenciales() {
+        MonitoreoSnmp fila = MonitoreoSnmp.builder().id(12L).activoId(44L)
+                .ipGestion("127.0.0.20:16600").usuario("monitor")
+                .clave("secreta").clavePrivacidad("privada")
+                .frecuenciaActualizacion(300).estadoConexion("Activo").build();
+        when(conexiones.findByActivoId(44L)).thenReturn(java.util.List.of(fila));
+        ConexionSnmpDetalle detalle = servicio.obtenerPorActivo(44L);
+        assertEquals("127.0.0.20:16600", detalle.ipGestion());
+        assertFalse(java.util.Arrays.stream(ConexionSnmpDetalle.class.getRecordComponents())
+                .anyMatch(c -> c.getName().toLowerCase().contains("clave")));
+        when(conexiones.findOneByActivoId(44L)).thenReturn(Optional.of(fila));
+        servicio.actualizar(44L, new ActualizarConexionSnmpRequest(
+                "127.0.0.20:16600", "monitor", "", 60));
+        assertEquals(60, fila.getFrecuenciaActualizacion());
+        assertEquals("secreta", fila.getClave());
+        assertEquals("privada", fila.getClavePrivacidad());
+        verify(cliente, never()).probar(any());
+        verify(conexiones).saveAndFlush(fila);
+    }
+
+    @Test
+    void cambioDeDestinoSePruebaAntesDeGuardarYActualizaIpDelActivo() {
+        MonitoreoSnmp fila = MonitoreoSnmp.builder().id(12L).activoId(44L)
+                .ipGestion("127.0.0.20:16600").usuario("monitor")
+                .clave("secreta").clavePrivacidad("privada")
+                .frecuenciaActualizacion(300).estadoConexion("Activo").build();
+        Activo activo = mock(Activo.class);
+        when(conexiones.findOneByActivoId(44L)).thenReturn(Optional.of(fila));
+        when(activos.findById(44L)).thenReturn(Optional.of(activo));
+        when(cliente.probar(any())).thenReturn(new ProbarRespuesta(true, "Switch", null,
+                null, "HPE", "SWITCH", 15, null, null));
+        servicio.actualizar(44L, new ActualizarConexionSnmpRequest(
+                "127.0.0.21:16600", "monitor", null, 60));
+        InOrder orden = inOrder(cliente, conexiones);
+        orden.verify(cliente).probar(argThat(req ->
+                "127.0.0.21:16600".equals(req.ipGestion()) && "secreta".equals(req.clave())));
+        orden.verify(conexiones).saveAndFlush(fila);
+        verify(activo).setIp_gestion("127.0.0.21:16600");
+        assertEquals("127.0.0.21:16600", fila.getIpGestion());
+    }
+
+    @Test
+    void claveNuevaDemasiadoCortaSeRechazaAntesDeConsultarSnmp() {
+        var error = assertThrows(SolicitudInvalidaException.class, () ->
+                servicio.actualizar(44L, new ActualizarConexionSnmpRequest(
+                        "127.0.0.20:16600", "monitor", "1234567", 300)));
+        assertTrue(error.getMessage().contains("al menos 8 caracteres"));
+        verifyNoInteractions(cliente, conexiones);
     }
 }

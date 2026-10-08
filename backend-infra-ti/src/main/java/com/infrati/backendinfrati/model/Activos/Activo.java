@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @DynamicUpdate
@@ -83,7 +84,7 @@ public abstract class Activo {
     private String version_firmware;
 
     @Column(name = "ultima_actualizacion")
-    private LocalDate ultima_actualizacion;
+    private LocalDateTime ultima_actualizacion;
 
     @Column(name = "cluster")
     private String cluster;

@@ -38,6 +38,24 @@ Devuelve `ok`, datos identificados del equipo y el tiempo de respuesta. Si la pr
 
 Las claves SNMP se leen desde la BD para el monitoreo posterior. El backend no necesita conocer el tipo de activo: el ETL detecta servidor, chasis, storage o switch a partir del agente SNMP.
 
+### Editar la conexión vinculada a un activo
+
+`GET http://localhost:8080/api/conexiones-snmp/activos/{activoId}` devuelve el ID de la
+conexión, IP, usuario, frecuencia, estado y fecha de la última lectura. Nunca devuelve
+la clave de autenticación ni la de privacidad.
+
+`PATCH http://localhost:8080/api/conexiones-snmp/activos/{activoId}` actualiza esa misma
+conexión, sin crear otro activo. Ejemplo:
+
+```json
+{"ipGestion":"127.0.0.11:16100","usuario":"monitor_dl380","frecuenciaActualizacion":300}
+```
+
+`clave` es opcional: si falta o está vacía, se conserva la almacenada. Un cambio de IP,
+usuario o clave se prueba por SNMP antes de guardar; si falla, la conexión permanece intacta.
+Al cambiar la IP, también se actualiza `activo.ip_gestion`. El estado de la conexión lo
+gestionan el ETL y la baja del activo, por lo que esta ruta no lo modifica.
+
 ## Clústeres
 
 `GET http://localhost:8080/api/clusters` lista todos los clústeres ordenados por nombre.
