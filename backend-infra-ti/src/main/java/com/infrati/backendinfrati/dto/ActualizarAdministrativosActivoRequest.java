@@ -14,5 +14,7 @@ public record ActualizarAdministrativosActivoRequest(
         @JsonAlias("tipo_red") String tipoRed,
         @JsonAlias("modo_operacion") String modoOperacion,
         Integer iops,
-        String cluster) {
+        String cluster,
+        @JsonAlias("ip_sistema_operativo") String ipSistemaOperativo,
+        @JsonAlias("version_so") String versionSo) {
 }

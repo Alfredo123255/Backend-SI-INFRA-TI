@@ -77,6 +77,12 @@ public class ActivoAdministrativoService {
         if (activo instanceof Servidor servidor && solicitud.fechaSoporteSo() != null) {
             servidor.setFecha_soporte_so(solicitud.fechaSoporteSo());
         }
+        if (activo instanceof Servidor servidor && solicitud.ipSistemaOperativo() != null) {
+            servidor.setIp_sistema_operativo(solicitud.ipSistemaOperativo().trim());
+        }
+        if (activo instanceof Servidor servidor && solicitud.versionSo() != null) {
+            servidor.setVersion_so(solicitud.versionSo().trim());
+        }
         if (activo instanceof Switch equipo && solicitud.tipoRed() != null) {
             equipo.setTipoRED(solicitud.tipoRed());
         }
@@ -91,13 +97,27 @@ public class ActivoAdministrativoService {
                 activo instanceof Switch equipo ? equipo.getTipoRED() : null,
                 activo instanceof Switch equipo ? equipo.getModo_operacion() : null,
                 activo instanceof Storage equipo ? equipo.getIops() : null,
-                activo.getCluster());
+                activo.getCluster(),
+                activo instanceof Servidor servidor ? servidor.getIp_sistema_operativo() : null,
+                activo instanceof Servidor servidor ? servidor.getVersion_so() : null);
     }
 
     private static void validarCamposEspecificos(Activo activo,
             ActualizarAdministrativosActivoRequest solicitud) {
         if (solicitud.fechaSoporteSo() != null && !(activo instanceof Servidor)) {
             throw new SolicitudInvalidaException("fechaSoporteSo solo aplica a servidores.");
+        }
+        if (solicitud.ipSistemaOperativo() != null || solicitud.versionSo() != null) {
+            if (!(activo instanceof Servidor) || !"Huawei".equalsIgnoreCase(activo.getFabricante())) {
+                throw new SolicitudInvalidaException("La IP y la versión del SO solo se editan manualmente en servidores Huawei.");
+            }
+            if (solicitud.ipSistemaOperativo() != null && !solicitud.ipSistemaOperativo().trim().matches(
+                    "^(25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}$")) {
+                throw new SolicitudInvalidaException("Introduce una dirección IPv4 válida para el sistema operativo.");
+            }
+            if (solicitud.versionSo() != null && (solicitud.versionSo().isBlank() || solicitud.versionSo().trim().length() > 255)) {
+                throw new SolicitudInvalidaException("Introduce un sistema operativo y versión válidos (máximo 255 caracteres).");
+            }
         }
         if ((solicitud.tipoRed() != null || solicitud.modoOperacion() != null)
                 && !(activo instanceof Switch)) {

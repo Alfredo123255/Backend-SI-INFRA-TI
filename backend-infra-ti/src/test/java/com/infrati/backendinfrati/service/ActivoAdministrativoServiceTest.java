@@ -41,7 +41,7 @@ class ActivoAdministrativoServiceTest {
 
     private static ActualizarAdministrativosActivoRequest solicitud(String responsable,
             String orden, LocalDate eos, LocalDate eol, LocalDate soporte, String red, String modo, Integer iops) {
-        return new ActualizarAdministrativosActivoRequest(responsable, orden, eos, eol, soporte, red, modo, iops, null);
+        return new ActualizarAdministrativosActivoRequest(responsable, orden, eos, eol, soporte, red, modo, iops, null, null, null);
     }
 
     @Test
@@ -61,6 +61,38 @@ class ActivoAdministrativoServiceTest {
         assertEquals(LocalDate.of(2029, 12, 31), respuesta.fechaSoporteSo());
         assertEquals("servidor-01", servidor.getHostname());
         assertEquals("ORIGINAL", respuesta.cluster());
+    }
+
+    @Test
+    void permiteEditarSoEIpHuaweiSinBorrarElOtroCampo() {
+        Servidor servidor = Servidor.builder().id(11L).fabricante("Huawei")
+                .ip_sistema_operativo("10.0.0.10").version_so("Ubuntu 22.04").build();
+        encontrado(servidor);
+
+        var cambioIp = new ActualizarAdministrativosActivoRequest(null, null, null, null,
+                null, null, null, null, null, "10.0.0.20", null);
+        var respuesta = service.actualizar(11L, cambioIp);
+
+        assertEquals("10.0.0.20", respuesta.ipSistemaOperativo());
+        assertEquals("Ubuntu 22.04", respuesta.versionSo());
+    }
+
+    @Test
+    void rechazaIpInvalidaYEdicionManualEnHpe() {
+        Servidor huawei = Servidor.builder().id(12L).fabricante("Huawei")
+                .ip_sistema_operativo("10.0.0.10").build();
+        encontrado(huawei);
+        var ipInvalida = new ActualizarAdministrativosActivoRequest(null, null, null, null,
+                null, null, null, null, null, "999.0.0.1", null);
+        assertThrows(SolicitudInvalidaException.class, () -> service.actualizar(12L, ipInvalida));
+        assertEquals("10.0.0.10", huawei.getIp_sistema_operativo());
+
+        Servidor hpe = Servidor.builder().id(13L).fabricante("HPE").version_so("Windows").build();
+        encontrado(hpe);
+        var cambioSo = new ActualizarAdministrativosActivoRequest(null, null, null, null,
+                null, null, null, null, null, null, "Ubuntu 24.04");
+        assertThrows(SolicitudInvalidaException.class, () -> service.actualizar(13L, cambioSo));
+        assertEquals("Windows", hpe.getVersion_so());
     }
 
     @Test
@@ -147,7 +179,7 @@ class ActivoAdministrativoServiceTest {
         encontrado(servidor);
         when(clusterRepository.existsById("CLUSTER-NUEVO")).thenReturn(true);
         var solicitud = new ActualizarAdministrativosActivoRequest(null, null, null, null,
-                null, null, null, null, " CLUSTER-NUEVO ");
+                null, null, null, null, " CLUSTER-NUEVO ", null, null);
 
         assertEquals("CLUSTER-NUEVO", service.actualizar(9L, solicitud).cluster());
         ArgumentCaptor<HistoricoEstado> evento = ArgumentCaptor.forClass(HistoricoEstado.class);
@@ -166,7 +198,7 @@ class ActivoAdministrativoServiceTest {
         Servidor servidor = Servidor.builder().id(10L).cluster("CLUSTER-ANTERIOR").build();
         encontrado(servidor);
         var solicitud = new ActualizarAdministrativosActivoRequest("Nuevo", null, null, null,
-                null, null, null, null, "NO-EXISTE");
+                null, null, null, null, "NO-EXISTE", null, null);
 
         assertThrows(RecursoNoEncontradoException.class, () -> service.actualizar(10L, solicitud));
         assertEquals("CLUSTER-ANTERIOR", servidor.getCluster());
