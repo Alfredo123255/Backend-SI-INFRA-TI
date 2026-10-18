@@ -26,11 +26,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class ConexionSnmpServiceTest {
+    private final CredencialesSnmp cifrado = new CredencialesSnmp("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", "");
     private final EtlClient cliente = mock(EtlClient.class);
     private final MonitoreoSnmpRepository conexiones = mock(MonitoreoSnmpRepository.class);
     private final ClusterRepository clusters = mock(ClusterRepository.class);
     private final ActivoRepository activos = mock(ActivoRepository.class);
-    private final ConexionSnmpService servicio = new ConexionSnmpService(cliente, conexiones, clusters, activos, "");
+    private final ActualizacionSnmpService actualizaciones = mock(ActualizacionSnmpService.class);
+    private final ConexionSnmpService servicio = new ConexionSnmpService(cliente, conexiones, clusters, activos, actualizaciones, cifrado, "");
 
     private static RegistroConexionRequest solicitud() {
         return new RegistroConexionRequest("127.0.0.20:16600", "monitor", "clave-auth",
@@ -43,7 +45,7 @@ class ConexionSnmpServiceTest {
         when(conexiones.saveAndFlush(any())).thenAnswer(invocacion -> {
             MonitoreoSnmp fila = invocacion.getArgument(0);
             assertEquals("Inactivo", fila.getEstadoConexion());
-            assertEquals("clave-priv", fila.getClavePrivacidad());
+            assertEquals("clave-priv", cifrado.descifrar(fila.getClavePrivacidad(), "clave_privacidad"));
             fila.setId(12L);
             return fila;
         });
@@ -75,7 +77,7 @@ class ConexionSnmpServiceTest {
 
     @Test
     void resuelveClaveDePrivacidadSinPedirlaAlFormulario() {
-        ConexionSnmpService configurado = new ConexionSnmpService(cliente, conexiones, clusters, activos,
+        ConexionSnmpService configurado = new ConexionSnmpService(cliente, conexiones, clusters, activos, actualizaciones, cifrado,
                 "{\"127.0.0.13:16400|monitor\":\"clave-priv-configurada\"}");
         configurado.probar(new ProbarSolicitud("127.0.0.13:16400", "monitor", "clave-auth", null));
         verify(cliente).probar(argThat(req -> "clave-priv-configurada".equals(req.clavePrivacidad())));
@@ -83,7 +85,7 @@ class ConexionSnmpServiceTest {
         when(clusters.existsById("CLUSTER-LAB-LOCAL")).thenReturn(true);
         when(conexiones.saveAndFlush(any())).thenAnswer(invocacion -> {
             MonitoreoSnmp fila = invocacion.getArgument(0);
-            assertEquals("clave-priv-configurada", fila.getClavePrivacidad());
+            assertEquals("clave-priv-configurada", cifrado.descifrar(fila.getClavePrivacidad(), "clave_privacidad"));
             fila.setId(13L);
             return fila;
         });
@@ -110,8 +112,9 @@ class ConexionSnmpServiceTest {
         servicio.actualizar(44L, new ActualizarConexionSnmpRequest(
                 "127.0.0.20:16600", "monitor", "", 60));
         assertEquals(60, fila.getFrecuenciaActualizacion());
-        assertEquals("secreta", fila.getClave());
-        assertEquals("privada", fila.getClavePrivacidad());
+        assertTrue(fila.getClave().startsWith("enc:v1:"));
+        assertEquals("secreta", cifrado.descifrar(fila.getClave(), "clave"));
+        assertEquals("privada", cifrado.descifrar(fila.getClavePrivacidad(), "clave_privacidad"));
         verify(cliente, never()).probar(any());
         verify(conexiones).saveAndFlush(fila);
     }
@@ -129,10 +132,11 @@ class ConexionSnmpServiceTest {
                 null, "HPE", "SWITCH", 15, null, null));
         servicio.actualizar(44L, new ActualizarConexionSnmpRequest(
                 "127.0.0.21:16600", "monitor", null, 60));
-        InOrder orden = inOrder(cliente, conexiones);
+        InOrder orden = inOrder(cliente, conexiones, actualizaciones);
         orden.verify(cliente).probar(argThat(req ->
                 "127.0.0.21:16600".equals(req.ipGestion()) && "secreta".equals(req.clave())));
         orden.verify(conexiones).saveAndFlush(fila);
+        orden.verify(actualizaciones).solicitar(12L);
         verify(activo).setIp_gestion("127.0.0.21:16600");
         assertEquals("127.0.0.21:16600", fila.getIpGestion());
     }
@@ -144,5 +148,36 @@ class ConexionSnmpServiceTest {
                         "127.0.0.20:16600", "monitor", "1234567", 300)));
         assertTrue(error.getMessage().contains("al menos 8 caracteres"));
         verifyNoInteractions(cliente, conexiones);
+    }
+
+    @Test
+    void validarCredencialesNoMarcaRecuperadoHastaLaLecturaCompleta() {
+        var fecha = java.time.LocalDateTime.of(2026, 10, 17, 1, 2);
+        var fila = MonitoreoSnmp.builder().id(12L).activoId(44L).ipGestion("127.0.0.20:16600")
+                .usuario("anterior").clave("clave-auth").frecuenciaActualizacion(86400)
+                .estadoConexion("Sin conexión").fechaUltimaActualizacion(fecha).build();
+        when(conexiones.findOneByActivoId(44L)).thenReturn(Optional.of(fila));
+        when(cliente.probar(any())).thenReturn(new ProbarRespuesta(true, "Servidor", null,
+                null, "HPE", "SERVIDOR", 5, null, null));
+        var respuesta = servicio.actualizar(44L, new ActualizarConexionSnmpRequest(
+                "127.0.0.20:16600", "nuevo", null, 86400));
+        assertEquals("Sin conexión", respuesta.estadoConexion());
+        assertEquals(fecha, respuesta.fechaUltimaActualizacion());
+        assertEquals(86400, respuesta.frecuenciaActualizacion());
+        verify(actualizaciones).solicitar(12L);
+    }
+
+    @Test
+    void credencialesIncorrectasNoSeGuardanNiPidenLectura() {
+        var fila = MonitoreoSnmp.builder().id(12L).activoId(44L).ipGestion("127.0.0.20:16600")
+                .usuario("anterior").clave("clave-auth").frecuenciaActualizacion(300).build();
+        when(conexiones.findOneByActivoId(44L)).thenReturn(Optional.of(fila));
+        when(cliente.probar(any())).thenReturn(new ProbarRespuesta(false, null, null,
+                null, null, null, 5, "usuario", "Usuario incorrecto"));
+        assertThrows(SolicitudInvalidaException.class, () -> servicio.actualizar(44L,
+                new ActualizarConexionSnmpRequest("127.0.0.20:16600", "incorrecto", null, 300)));
+        assertEquals("anterior", fila.getUsuario());
+        verify(conexiones, never()).saveAndFlush(any());
+        verifyNoInteractions(actualizaciones);
     }
 }

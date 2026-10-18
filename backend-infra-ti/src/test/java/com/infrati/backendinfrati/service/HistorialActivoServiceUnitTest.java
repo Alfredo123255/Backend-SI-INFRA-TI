@@ -54,4 +54,17 @@ class HistorialActivoServiceUnitTest {
     void noDevuelveHistorialParaUnActivoInexistente() {
         assertThrows(RecursoNoEncontradoException.class, () -> service.listar(999L));
     }
+
+    @Test
+    void ocultaContadoresTecnicosAntiguosYConservaLosRetiros() {
+        when(activos.existsById(19L)).thenReturn(true);
+        var marca = HistoricoEstado.builder().id(1L).campo("lectura_componentes").valorNuevo("1").build();
+        var retiro = HistoricoEstado.builder().id(2L).campo("presencia").valorNuevo("Retirado")
+                .componenteTipo("disco").componenteSn("D1").build();
+        when(historico.findByActivo_IdOrderByFechaCambioDescIdDesc(19L)).thenReturn(List.of(retiro, marca));
+        var resultado = service.listar(19L);
+        assertEquals(1, resultado.size());
+        assertEquals("presencia", resultado.get(0).campo());
+        assertEquals("D1", resultado.get(0).componenteSn());
+    }
 }

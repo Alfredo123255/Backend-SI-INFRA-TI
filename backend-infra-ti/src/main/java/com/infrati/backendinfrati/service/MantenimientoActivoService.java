@@ -54,9 +54,9 @@ public class MantenimientoActivoService {
         if (solicitud == null || solicitud.mantenimientoActivo() == null) {
             throw new SolicitudInvalidaException("mantenimientoActivo debe ser true o false.");
         }
-        String responsable = detalle(solicitud.responsable(), "responsable");
-        String motivo = detalle(solicitud.motivo(), "motivo");
         boolean activar = solicitud.mantenimientoActivo();
+        String responsable = detalle(solicitud.responsable(), "responsable", activar);
+        String motivo = detalle(solicitud.motivo(), "motivo", activar);
         // El ETL bloquea primero la conexión y después el activo. Respetar ese
         // orden evita que una extracción concurrente escriba tras la pausa.
         MonitoreoSnmp conexion = conexiones.findOneByActivoId(id).orElse(null);
@@ -119,8 +119,13 @@ public class MantenimientoActivoService {
                 .build());
     }
 
-    private static String detalle(String valor, String campo) {
-        if (valor == null || valor.isBlank()) return null;
+    private static String detalle(String valor, String campo, boolean obligatorio) {
+        if (valor == null || valor.isBlank()) {
+            if (obligatorio) {
+                throw new SolicitudInvalidaException("El campo " + campo + " es obligatorio para iniciar mantenimiento.");
+            }
+            return null;
+        }
         if (valor.length() > 255 || valor.chars().anyMatch(Character::isISOControl)) {
             throw new SolicitudInvalidaException("El campo " + campo + " debe ser válido.");
         }

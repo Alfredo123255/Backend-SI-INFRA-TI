@@ -29,15 +29,20 @@ public class ConexionSnmpService {
     private final MonitoreoSnmpRepository conexiones;
     private final ClusterRepository clusters;
     private final ActivoRepository activos;
+    private final ActualizacionSnmpService actualizaciones;
+    private final CredencialesSnmp cifrado;
     private final Map<String, String> clavesPrivacidad;
 
     public ConexionSnmpService(EtlClient etlClient, MonitoreoSnmpRepository conexiones,
                                ClusterRepository clusters, ActivoRepository activos,
+                               ActualizacionSnmpService actualizaciones, CredencialesSnmp cifrado,
                                @Value("${SNMP_PRIVACY_KEYS_JSON:}") String clavesPrivacidadJson) {
         this.etlClient = etlClient;
         this.conexiones = conexiones;
         this.clusters = clusters;
         this.activos = activos;
+        this.actualizaciones = actualizaciones;
+        this.cifrado = cifrado;
         try {
             this.clavesPrivacidad = clavesPrivacidadJson == null || clavesPrivacidadJson.isBlank()
                     ? Map.of()
@@ -79,11 +84,12 @@ public class ConexionSnmpService {
                         "El activo no tiene una conexión SNMP vinculada."));
         String ip = solicitud.ipGestion().trim();
         String usuario = solicitud.usuario().trim();
+        String claveAnterior = cifrado.descifrar(conexion.getClave(), "clave");
         String clave = solicitud.clave() == null || solicitud.clave().isBlank()
-                ? conexion.getClave() : solicitud.clave();
+                ? claveAnterior : solicitud.clave();
         boolean credencialesCambiaron = !ip.equals(conexion.getIpGestion())
-                || !usuario.equals(conexion.getUsuario()) || !clave.equals(conexion.getClave());
-        String privacidad = conexion.getClavePrivacidad();
+                || !usuario.equals(conexion.getUsuario()) || !clave.equals(claveAnterior);
+        String privacidad = cifrado.descifrar(conexion.getClavePrivacidad(), "clave_privacidad");
         if (credencialesCambiaron) {
             privacidad = clavesPrivacidad.getOrDefault(ip + "|" + usuario, privacidad);
             ProbarRespuesta prueba = etlClient.probar(new ProbarSolicitud(ip, usuario, clave, privacidad));
@@ -92,6 +98,8 @@ public class ConexionSnmpService {
                         ? "La nueva conexión SNMP no respondió correctamente." : prueba.mensaje());
             }
         }
+        String claveCifrada = cifrado.cifrar(clave, "clave");
+        String privacidadCifrada = cifrado.cifrar(privacidad, "clave_privacidad");
         if (!ip.equals(conexion.getIpGestion())) {
             var activo = activos.findById(activoId)
                     .orElseThrow(() -> new RecursoNoEncontradoException("Activo no encontrado."));
@@ -99,10 +107,11 @@ public class ConexionSnmpService {
         }
         conexion.setIpGestion(ip);
         conexion.setUsuario(usuario);
-        conexion.setClave(clave);
-        conexion.setClavePrivacidad(privacidad);
+        conexion.setClave(claveCifrada);
+        conexion.setClavePrivacidad(privacidadCifrada);
         conexion.setFrecuenciaActualizacion(solicitud.frecuenciaActualizacion());
         conexiones.saveAndFlush(conexion);
+        actualizaciones.solicitar(conexion.getId());
         return detalle(conexion);
     }
 
@@ -128,9 +137,9 @@ public class ConexionSnmpService {
         MonitoreoSnmp conexion = conexiones.saveAndFlush(MonitoreoSnmp.builder()
                 .ipGestion(solicitud.ipGestion().trim())
                 .usuario(solicitud.usuario().trim())
-                .clave(solicitud.clave())
-                .clavePrivacidad(resolverClavePrivacidad(solicitud.ipGestion(), solicitud.usuario(),
-                        solicitud.clavePrivacidad()))
+                .clave(cifrado.cifrar(solicitud.clave(), "clave"))
+                .clavePrivacidad(cifrado.cifrar(resolverClavePrivacidad(solicitud.ipGestion(), solicitud.usuario(),
+                        solicitud.clavePrivacidad()), "clave_privacidad"))
                 .frecuenciaActualizacion(solicitud.frecuenciaActualizacion())
                 .estadoConexion("Inactivo")
                 .build());

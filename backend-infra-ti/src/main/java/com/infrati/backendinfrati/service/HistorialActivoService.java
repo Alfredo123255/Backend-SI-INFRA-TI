@@ -25,6 +25,7 @@ public class HistorialActivoService {
             throw new RecursoNoEncontradoException("Activo " + activoId + " no encontrado");
         }
         return historico.findByActivo_IdOrderByFechaCambioDescIdDesc(activoId).stream()
+                .filter(evento -> !"lectura_componentes".equals(evento.getCampo()))
                 .map(evento -> new EventoHistoricoActivo(evento.getId(),
                         evento.getComponenteTipo(), evento.getComponenteSn(),
                         evento.getCampo(), evento.getDescripcion(), evento.getValorNuevo(),
