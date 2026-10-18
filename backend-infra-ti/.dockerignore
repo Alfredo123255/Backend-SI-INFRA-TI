@@ -1,0 +1,14 @@
+**
+!pom.xml
+!src/
+!src/main/
+!src/main/**
+!Dockerfile
+!.dockerignore
+**/.env
+**/.env.*
+**/*.key
+**/*.dump
+**/*.backup
+**/*.log
+**/CLAVES-DESPLIEGUE-PRIVADO.md

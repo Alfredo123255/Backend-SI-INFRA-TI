@@ -35,3 +35,8 @@ build/
 
 ### Codex temporary work files ###
 .codex-*/
+
+# Documentación privada de secretos
+CLAVES-DESPLIEGUE-PRIVADO.md
+snmp_credentials.key
+snmp_credentials.backup.enc

@@ -33,3 +33,14 @@ certifica una lectura exitosa ni elimina por sí solo el estado Sin conexión.
 
 Las pruebas del backend requieren una llave de prueba propia, diferente de la
 de producción. La suite local se ejecutó en una base test existente sin DDL.
+
+
+## Llave existente de este entorno
+
+La instalación local ya tiene una llave en
+`C:/Users/jenny/.config/infra-ti/snmp_credentials.key`. Su valor y las instrucciones
+de traslado se encuentran en
+`C:/Users/jenny/.config/infra-ti/CLAVES-DESPLIEGUE-PRIVADO.md`, fuera de Git.
+Si se traslada la base cifrada actual, usar exactamente esa llave. Configurar la
+misma `SNMP_CREDENTIAL_KEY_FILE` para el backend, FastAPI y ETL periódico.
+Copiar únicamente .env no copia el archivo indicado por esa ruta.
