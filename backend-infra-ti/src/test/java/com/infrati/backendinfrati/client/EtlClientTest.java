@@ -52,13 +52,14 @@ class EtlClientTest {
         });
         servidor.start();
         EtlClient cliente = new EtlClient("http://127.0.0.1:" + servidor.getAddress().getPort(), "clave-test");
-        ProbarRespuesta prueba = cliente.probar(new ProbarSolicitud("127.0.0.20:16600", "monitor", "secreta", null));
+        ProbarRespuesta prueba = cliente.probar(new ProbarSolicitud("127.0.0.20:16600", "monitor", "secreta"));
         ActivoCreado alta = cliente.crearActivo(new CrearActivoSolicitud(12L, "CLUSTER-LAB-LOCAL"));
         assertTrue(prueba.ok());
         assertEquals("SWITCH", prueba.tipoDetectado());
         assertEquals("clave-test", claveRecibida.get());
         assertTrue(cuerpoPrueba.get().contains("\"ip_gestion\":\"127.0.0.20:16600\""));
         assertTrue(cuerpoPrueba.get().contains("\"clave\":\"secreta\""));
+        assertFalse(cuerpoPrueba.get().contains("clave_privacidad"));
         assertTrue(cuerpoAlta.get().contains("\"conexion_id\":12"));
         assertTrue(cuerpoAlta.get().contains("\"cluster_id\":\"CLUSTER-LAB-LOCAL\""));
         assertEquals(44L, alta.activoId());

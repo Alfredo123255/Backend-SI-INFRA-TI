@@ -9,6 +9,8 @@ import java.util.List;
 
 public interface ActivoRepository extends JpaRepository<Activo, Long> {
     List<Activo> findByMantenimientoActivoTrue();
+    long countByCluster(String cluster);
+    long countByUbicacion(String ubicacion);
     @Modifying
     @Query(value = """
             UPDATE activo SET mantenimiento_activo = :mantenimiento

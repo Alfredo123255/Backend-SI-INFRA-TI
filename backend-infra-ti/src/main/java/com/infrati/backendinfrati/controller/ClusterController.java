@@ -1,11 +1,15 @@
 package com.infrati.backendinfrati.controller;
 
+import com.infrati.backendinfrati.dto.ActualizarClusterRequest;
 import com.infrati.backendinfrati.dto.ClusterRespuesta;
 import com.infrati.backendinfrati.dto.CrearClusterRequest;
 import com.infrati.backendinfrati.service.ClusterService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,5 +36,15 @@ public class ClusterController {
     @PostMapping
     public ResponseEntity<ClusterRespuesta> crear(@RequestBody CrearClusterRequest solicitud) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.crear(solicitud));
+    }
+    @PutMapping("/{nombre}")
+    public ClusterRespuesta actualizar(@PathVariable String nombre, @RequestBody ActualizarClusterRequest solicitud) {
+        return service.actualizar(nombre, solicitud);
+    }
+
+    @DeleteMapping("/{nombre}")
+    public ResponseEntity<Void> eliminar(@PathVariable String nombre) {
+        service.eliminar(nombre);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -12,8 +12,7 @@ El backend expone dos operaciones para el frontend:
 {
   "ipGestion": "127.0.0.12",
   "usuario": "monitor_bd_demo",
-  "clave": "clave-del-agente",
-  "clavePrivacidad": null
+  "clave": "clave-del-agente"
 }
 ```
 
@@ -28,7 +27,6 @@ Devuelve `ok`, datos identificados del equipo y el tiempo de respuesta. Si la pr
   "ipGestion": "127.0.0.12",
   "usuario": "monitor_bd_demo",
   "clave": "clave-del-agente",
-  "clavePrivacidad": null,
   "frecuenciaActualizacion": 300,
   "clusterId": "CLUSTER-LAB-LOCAL"
 }
@@ -36,13 +34,14 @@ Devuelve `ok`, datos identificados del equipo y el tiempo de respuesta. Si la pr
 
 `frecuenciaActualizacion` está en segundos. El clúster debe existir en la BD y tener datacenter. El backend guarda la conexión como `Inactivo` y envía su ID junto con el ID del clúster al ETL. Al crear el activo, el ETL vincula la conexión, la cambia a `Activo` y responde `201` con el ID del activo, componentes, métricas y eventos iniciales. Ante un error confirmado, se elimina la conexión recién creada si sigue sin vincular; si el resultado es incierto y ya existe un vínculo, la conexión se conserva para evitar duplicados.
 
-Las claves SNMP se leen desde la BD para el monitoreo posterior. El backend no necesita conocer el tipo de activo: el ETL detecta servidor, chasis, storage o switch a partir del agente SNMP.
+La única clave SNMP se utiliza para autenticación y privacidad y se lee desde la BD para el monitoreo posterior. El backend no necesita conocer el tipo de activo: el ETL detecta servidor, chasis, storage o switch a partir del agente SNMP.
 
 ### Editar la conexión vinculada a un activo
 
 `GET http://localhost:8080/api/conexiones-snmp/activos/{activoId}` devuelve el ID de la
 conexión, IP, usuario, frecuencia, estado y fecha de la última lectura. Nunca devuelve
-la clave de autenticación ni la de privacidad.
+la clave SNMP. La fecha se obtiene de `activo.ultima_actualizacion`; no existe
+una fecha persistida independiente para la conexión.
 
 `PATCH http://localhost:8080/api/conexiones-snmp/activos/{activoId}` actualiza esa misma
 conexión, sin crear otro activo. Ejemplo:

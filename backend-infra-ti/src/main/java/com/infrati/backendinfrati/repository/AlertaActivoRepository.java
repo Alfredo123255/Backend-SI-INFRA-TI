@@ -35,12 +35,13 @@ public class AlertaActivoRepository {
                     SELECT he.componente_tipo, he.componente_sn, he.campo,
                            he.descripcion, he.valor_nuevo, he.fecha_cambio
                     FROM historico_estado he
-                    WHERE he.activo_id = a.id
+                    WHERE he.activo_id = a.id AND NOT starts_with(he.campo, 'umbral_')
                     ORDER BY he.fecha_cambio DESC NULLS LAST, he.id DESC
                     LIMIT 1
                 ) h ON true
-                WHERE a.estado_operativo = 'Apagado'
-                   OR c.estado_conexion = 'Sin conexión'
+                WHERE a.estado_operativo <> 'Baja' AND NOT a.mantenimiento_activo
+                  AND (a.estado_operativo = 'Apagado'
+                   OR c.estado_conexion = 'Sin conexión')
                 ORDER BY h.fecha_cambio DESC NULLS LAST, a.id
                 """, (rs, rowNum) -> {
             Timestamp fecha = rs.getTimestamp("fecha_cambio");

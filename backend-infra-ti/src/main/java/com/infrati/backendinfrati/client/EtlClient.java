@@ -38,7 +38,6 @@ public class EtlClient {
         cuerpo.put("ip_gestion", solicitud.ipGestion());
         cuerpo.put("usuario", solicitud.usuario());
         cuerpo.put("clave", solicitud.clave());
-        cuerpo.put("clave_privacidad", solicitud.clavePrivacidad());
         Map<String, Object> respuesta = enviar("/api/etl/probar-conexion", cuerpo);
         return new ProbarRespuesta(Boolean.TRUE.equals(respuesta.get("ok")), texto(respuesta, "descripcion"),
                 texto(respuesta, "sys_object_id"), texto(respuesta, "sys_name"),

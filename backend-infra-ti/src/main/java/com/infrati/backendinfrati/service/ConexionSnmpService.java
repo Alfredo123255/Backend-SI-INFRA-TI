@@ -14,14 +14,9 @@ import com.infrati.backendinfrati.model.MonitoreoSnmp;
 import com.infrati.backendinfrati.repository.ClusterRepository;
 import com.infrati.backendinfrati.repository.ActivoRepository;
 import com.infrati.backendinfrati.repository.MonitoreoSnmpRepository;
-import tools.jackson.core.JacksonException;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
 
 @Service
 public class ConexionSnmpService {
@@ -31,32 +26,21 @@ public class ConexionSnmpService {
     private final ActivoRepository activos;
     private final ActualizacionSnmpService actualizaciones;
     private final CredencialesSnmp cifrado;
-    private final Map<String, String> clavesPrivacidad;
 
     public ConexionSnmpService(EtlClient etlClient, MonitoreoSnmpRepository conexiones,
                                ClusterRepository clusters, ActivoRepository activos,
-                               ActualizacionSnmpService actualizaciones, CredencialesSnmp cifrado,
-                               @Value("${SNMP_PRIVACY_KEYS_JSON:}") String clavesPrivacidadJson) {
+                               ActualizacionSnmpService actualizaciones, CredencialesSnmp cifrado) {
         this.etlClient = etlClient;
         this.conexiones = conexiones;
         this.clusters = clusters;
         this.activos = activos;
         this.actualizaciones = actualizaciones;
         this.cifrado = cifrado;
-        try {
-            this.clavesPrivacidad = clavesPrivacidadJson == null || clavesPrivacidadJson.isBlank()
-                    ? Map.of()
-                    : new ObjectMapper().readValue(clavesPrivacidadJson, new TypeReference<>() {});
-        } catch (JacksonException error) {
-            throw new IllegalArgumentException("SNMP_PRIVACY_KEYS_JSON debe ser un objeto JSON válido.", error);
-        }
     }
 
     public ProbarRespuesta probar(ProbarSolicitud solicitud) {
-        validarConexion(solicitud.ipGestion(), solicitud.usuario(), solicitud.clave(), solicitud.clavePrivacidad());
-        return etlClient.probar(new ProbarSolicitud(solicitud.ipGestion(), solicitud.usuario(),
-                solicitud.clave(), resolverClavePrivacidad(solicitud.ipGestion(), solicitud.usuario(),
-                        solicitud.clavePrivacidad())));
+        validarConexion(solicitud.ipGestion(), solicitud.usuario(), solicitud.clave());
+        return etlClient.probar(solicitud);
     }
 
     public ConexionSnmpDetalle obtenerPorActivo(Long activoId) {
@@ -89,17 +73,14 @@ public class ConexionSnmpService {
                 ? claveAnterior : solicitud.clave();
         boolean credencialesCambiaron = !ip.equals(conexion.getIpGestion())
                 || !usuario.equals(conexion.getUsuario()) || !clave.equals(claveAnterior);
-        String privacidad = cifrado.descifrar(conexion.getClavePrivacidad(), "clave_privacidad");
         if (credencialesCambiaron) {
-            privacidad = clavesPrivacidad.getOrDefault(ip + "|" + usuario, privacidad);
-            ProbarRespuesta prueba = etlClient.probar(new ProbarSolicitud(ip, usuario, clave, privacidad));
+            ProbarRespuesta prueba = etlClient.probar(new ProbarSolicitud(ip, usuario, clave));
             if (!prueba.ok()) {
                 throw new SolicitudInvalidaException(prueba.mensaje() == null
                         ? "La nueva conexión SNMP no respondió correctamente." : prueba.mensaje());
             }
         }
         String claveCifrada = cifrado.cifrar(clave, "clave");
-        String privacidadCifrada = cifrado.cifrar(privacidad, "clave_privacidad");
         if (!ip.equals(conexion.getIpGestion())) {
             var activo = activos.findById(activoId)
                     .orElseThrow(() -> new RecursoNoEncontradoException("Activo no encontrado."));
@@ -108,21 +89,22 @@ public class ConexionSnmpService {
         conexion.setIpGestion(ip);
         conexion.setUsuario(usuario);
         conexion.setClave(claveCifrada);
-        conexion.setClavePrivacidad(privacidadCifrada);
         conexion.setFrecuenciaActualizacion(solicitud.frecuenciaActualizacion());
         conexiones.saveAndFlush(conexion);
         actualizaciones.solicitar(conexion.getId());
         return detalle(conexion);
     }
 
-    private static ConexionSnmpDetalle detalle(MonitoreoSnmp conexion) {
+    private ConexionSnmpDetalle detalle(MonitoreoSnmp conexion) {
         return new ConexionSnmpDetalle(conexion.getId(), conexion.getActivoId(),
                 conexion.getIpGestion(), conexion.getUsuario(), conexion.getFrecuenciaActualizacion(),
-                conexion.getEstadoConexion(), conexion.getFechaUltimaActualizacion());
+                conexion.getEstadoConexion(), conexion.getActivoId() == null ? null
+                        : activos.findById(conexion.getActivoId())
+                                .map(a -> a.getUltima_actualizacion()).orElse(null));
     }
 
     public ActivoCreado registrarYCrear(RegistroConexionRequest solicitud) {
-        validarConexion(solicitud.ipGestion(), solicitud.usuario(), solicitud.clave(), solicitud.clavePrivacidad());
+        validarConexion(solicitud.ipGestion(), solicitud.usuario(), solicitud.clave());
         if (solicitud.frecuenciaActualizacion() == null || solicitud.frecuenciaActualizacion() <= 0) {
             throw new SolicitudInvalidaException("La frecuencia debe ser un número positivo de segundos.");
         }
@@ -138,8 +120,6 @@ public class ConexionSnmpService {
                 .ipGestion(solicitud.ipGestion().trim())
                 .usuario(solicitud.usuario().trim())
                 .clave(cifrado.cifrar(solicitud.clave(), "clave"))
-                .clavePrivacidad(cifrado.cifrar(resolverClavePrivacidad(solicitud.ipGestion(), solicitud.usuario(),
-                        solicitud.clavePrivacidad()), "clave_privacidad"))
                 .frecuenciaActualizacion(solicitud.frecuenciaActualizacion())
                 .estadoConexion("Inactivo")
                 .build());
@@ -156,14 +136,14 @@ public class ConexionSnmpService {
         }
     }
 
-    private static void validarConexion(String ip, String usuario, String clave, String clavePrivacidad) {
+    private static void validarConexion(String ip, String usuario, String clave) {
         if (ip == null || ip.isBlank() || ip.length() > 255) {
             throw new SolicitudInvalidaException("La IP de gestión es obligatoria y debe ser válida.");
         }
         if (usuario == null || usuario.isBlank() || usuario.length() > 32) {
             throw new SolicitudInvalidaException("El usuario SNMPv3 es obligatorio.");
         }
-        if (clave == null || clave.isBlank() || (clavePrivacidad != null && clavePrivacidad.isBlank())) {
+        if (clave == null || clave.isBlank()) {
             throw new SolicitudInvalidaException("Las credenciales SNMPv3 son obligatorias.");
         }
         if (clave.length() < 8) {
@@ -171,10 +151,4 @@ public class ConexionSnmpService {
         }
     }
 
-    private String resolverClavePrivacidad(String ip, String usuario, String claveSolicitada) {
-        if (claveSolicitada != null) {
-            return claveSolicitada;
-        }
-        return clavesPrivacidad.get(ip.trim() + "|" + usuario.trim());
-    }
 }

@@ -21,7 +21,7 @@ public class DataCenter {
     private String nombre;
 
     @Column(name = "latitud")
-    private String laitud;
+    private String latitud;
 
     @Column(name = "longitud")
     private String longitud;

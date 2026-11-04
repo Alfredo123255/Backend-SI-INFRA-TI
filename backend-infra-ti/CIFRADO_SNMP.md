@@ -7,7 +7,7 @@ La misma llave debe estar disponible para FastAPI y el programador ETL. Nunca
 guardarla en el repositorio, en la base de datos ni dentro de una imagen Docker.
 En contenedores, montarla como secreto de solo lectura.
 
-El servicio cifra `monitoreo_snmp.clave` y `clave_privacidad` con AES-256-GCM antes
+El servicio cifra únicamente `monitoreo_snmp.clave` con AES-256-GCM antes
 de guardar. El usuario SNMP permanece legible y las respuestas no incluyen las
 claves. El límite conservador de una clave es 158 bytes UTF-8, para respetar el
 VARCHAR(255) existente. No se cambia el esquema ni se configura Hibernate para

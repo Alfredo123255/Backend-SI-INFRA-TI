@@ -15,7 +15,6 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "monitoreo_snmp")
@@ -41,19 +40,11 @@ public class MonitoreoSnmp {
     @ToString.Exclude
     private String clave;
 
-    @Column(name = "clave_privacidad")
-    @JsonIgnore
-    @ToString.Exclude
-    private String clavePrivacidad;
-
     @Column(name = "frecuencia_actualizacion")
     private Integer frecuenciaActualizacion;
 
     @Column(name = "estado_conexion")
     private String estadoConexion;
-
-    @Column(name = "fecha_ultima_actualizacion")
-    private LocalDateTime fechaUltimaActualizacion;
 
     /** Columna simple, sin @ManyToOne: queda NULL hasta que el ETL vincula el activo. */
     @JdbcTypeCode(SqlTypes.INTEGER)

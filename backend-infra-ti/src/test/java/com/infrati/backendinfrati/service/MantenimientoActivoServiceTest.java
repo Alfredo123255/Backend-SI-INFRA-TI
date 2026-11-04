@@ -63,19 +63,19 @@ class MantenimientoActivoServiceTest {
         assumeTrue(activo != null, "La BD de integración no tiene un activo con conexión");
         long id = activo.getId();
         var conexion = conexiones.findOneByActivoId(id).orElseThrow();
-        var ultimaLectura = conexion.getFechaUltimaActualizacion();
+        var ultimaLectura = activo.getUltima_actualizacion();
         conexion.setEstadoConexion("Sin conexión");
         long eventosAntes = contarEventosConexion(id);
 
         service.cambiar(id, new CambiarMantenimientoRequest(true, "Operaciones", "Intervención"));
         entityManager.flush();
         assertEquals("Inactivo", conexion.getEstadoConexion());
-        assertEquals(ultimaLectura, conexion.getFechaUltimaActualizacion());
+        assertEquals(ultimaLectura, activo.getUltima_actualizacion());
 
         service.cambiar(id, new CambiarMantenimientoRequest(false, "Operaciones", "Terminada"));
         entityManager.flush();
         assertEquals("Sin conexión", conexion.getEstadoConexion());
-        assertEquals(ultimaLectura, conexion.getFechaUltimaActualizacion());
+        assertEquals(ultimaLectura, activo.getUltima_actualizacion());
         assertEquals(eventosAntes + 2, contarEventosConexion(id));
     }
 
