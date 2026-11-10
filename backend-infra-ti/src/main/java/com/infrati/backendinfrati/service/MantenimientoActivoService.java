@@ -21,6 +21,7 @@ import java.util.List;
 
 @Service
 public class MantenimientoActivoService {
+    private final ReevaluacionAlertas reevaluacion;
     private static final String PAUSA_CONEXION = "Pausada por mantenimiento. Estado previo: ";
     private final ActivoRepository activos;
     private final HistoricoEstadoRepository historico;
@@ -29,7 +30,8 @@ public class MantenimientoActivoService {
 
     public MantenimientoActivoService(ActivoRepository activos,
             HistoricoEstadoRepository historico, MonitoreoSnmpRepository conexiones,
-            EntityManager entityManager) {
+            EntityManager entityManager, ReevaluacionAlertas reevaluacion) {
+        this.reevaluacion=reevaluacion;
         this.activos = activos;
         this.historico = historico;
         this.conexiones = conexiones;
@@ -105,6 +107,7 @@ public class MantenimientoActivoService {
                 }
             }
         }
+        if (cambios==1) reevaluacion.solicitar(id);
         return new MantenimientoActivoRespuesta(id,
                 Boolean.TRUE.equals(activo.getMantenimientoActivo()), cambios == 1);
     }

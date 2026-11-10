@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -20,7 +21,8 @@ public class AlertaActivoController {
     }
 
     @GetMapping
-    public List<AlertaActivo> listar() {
-        return service.listar();
+    public List<AlertaActivo> listar(@RequestParam(required=false) Long activoId,
+            @RequestParam(required=false) String severidad, @RequestParam(required=false) String categoria) {
+        return service.listar(activoId,severidad,categoria);
     }
 }

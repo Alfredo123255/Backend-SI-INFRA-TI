@@ -1,6 +1,9 @@
 package com.infrati.backendinfrati.controller;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -23,9 +26,17 @@ class ManejoGlobalExcepcionesTest {
     @Autowired
     private MockMvc mockMvc;
 
+    private MockHttpSession sesion() {
+        var contexto = SecurityContextHolder.createEmptyContext();
+        contexto.setAuthentication(new TestingAuthenticationToken("prueba", null, "ver_inventario"));
+        var sesion = new MockHttpSession();
+        sesion.setAttribute("SPRING_SECURITY_CONTEXT", contexto);
+        return sesion;
+    }
+
     @Test
     void recursoInexistenteDevuelve404SinDetallesInternos() throws Exception {
-        mockMvc.perform(get("/api/servidores/999999"))
+        mockMvc.perform(get("/api/servidores/999999").session(sesion()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value("Servidor 999999 no encontrado"))
@@ -36,7 +47,7 @@ class ManejoGlobalExcepcionesTest {
 
     @Test
     void identificadorMalFormadoDevuelve400SinDetallesInternos() throws Exception {
-        mockMvc.perform(get("/api/servidores/abc"))
+        mockMvc.perform(get("/api/servidores/abc").session(sesion()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.message").value("El formato del parametro es invalido"))
@@ -47,7 +58,7 @@ class ManejoGlobalExcepcionesTest {
 
     @Test
     void endpointInexistenteDevuelve404SinDetallesInternos() throws Exception {
-        mockMvc.perform(get("/api/endpoint-inexistente"))
+        mockMvc.perform(get("/api/endpoint-inexistente").session(sesion()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value("Endpoint no encontrado"))
@@ -58,7 +69,7 @@ class ManejoGlobalExcepcionesTest {
 
     @Test
     void errorInternoDevuelve500GenericoSinInformacionSensible() throws Exception {
-        mockMvc.perform(get("/api/prueba/error-interno"))
+        mockMvc.perform(get("/api/prueba/error-interno").session(sesion()))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.status").value(500))
                 .andExpect(jsonPath("$.message").value("Ocurrio un error interno inesperado"))

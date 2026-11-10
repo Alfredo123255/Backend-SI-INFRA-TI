@@ -33,7 +33,7 @@ class ActivoAdministrativoServiceTest {
     private final ClusterRepository clusterRepository = mock(ClusterRepository.class);
     private final HistoricoEstadoRepository historico = mock(HistoricoEstadoRepository.class);
     private final ActivoAdministrativoService service = new ActivoAdministrativoService(
-            repository, modeloRepository, clusterRepository, historico);
+            repository, modeloRepository, clusterRepository, historico, mock(ReevaluacionAlertas.class));
 
     private void encontrado(Activo activo) {
         when(repository.findById(activo.getId())).thenReturn(Optional.of(activo));

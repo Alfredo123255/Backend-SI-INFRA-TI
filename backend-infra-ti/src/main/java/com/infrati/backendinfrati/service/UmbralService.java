@@ -17,12 +17,14 @@ import java.util.Set;
 
 @Service
 public class UmbralService {
+    private final ReevaluacionAlertas reevaluacion;
     private static final Set<String> PORCENTAJES = Set.of("cpu_uso_ghz", "ram_uso_gb",
             "disco_uso_gb", "almacenamiento_uso_tb", "red_utilizacion_pct");
     private static final BigDecimal CIEN = BigDecimal.valueOf(100);
     private final UmbralRepository repository;
 
-    public UmbralService(UmbralRepository repository) {
+    public UmbralService(UmbralRepository repository, ReevaluacionAlertas reevaluacion) {
+        this.reevaluacion=reevaluacion;
         this.repository = repository;
     }
 
@@ -53,6 +55,7 @@ public class UmbralService {
         umbral.setAdvertencia(advertencia);
         umbral.setCritico(critico);
         umbral.setFechaModificacion(LocalDateTime.now(ZoneOffset.UTC));
+        reevaluacion.solicitar(null);
         return respuesta(umbral);
     }
 

@@ -21,13 +21,15 @@ import java.time.ZoneOffset;
 
 @Service
 public class ActivoAdministrativoService {
+    private final ReevaluacionAlertas reevaluacion;
     private final ActivoRepository repository;
     private final ModeloRepository modeloRepository;
     private final ClusterRepository clusterRepository;
     private final HistoricoEstadoRepository historico;
 
     public ActivoAdministrativoService(ActivoRepository repository, ModeloRepository modeloRepository,
-            ClusterRepository clusterRepository, HistoricoEstadoRepository historico) {
+            ClusterRepository clusterRepository, HistoricoEstadoRepository historico, ReevaluacionAlertas reevaluacion) {
+        this.reevaluacion=reevaluacion;
         this.repository = repository;
         this.modeloRepository = modeloRepository;
         this.clusterRepository = clusterRepository;
@@ -89,6 +91,7 @@ public class ActivoAdministrativoService {
         if (activo instanceof Switch equipo && solicitud.modoOperacion() != null) {
             equipo.setModo_operacion(solicitud.modoOperacion());
         }
+        if (solicitud.fechaEos()!=null) reevaluacion.solicitar(id);
         return new DatosAdministrativosActivo(activo.getId(),
                 activo.getTipo_activo() == null ? null : activo.getTipo_activo().name(),
                 activo.getResponsable(), activo.getOrden_compra(), activo.getFecha_eos(),

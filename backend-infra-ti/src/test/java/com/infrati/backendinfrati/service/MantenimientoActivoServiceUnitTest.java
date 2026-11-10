@@ -17,7 +17,7 @@ class MantenimientoActivoServiceUnitTest {
     private final MonitoreoSnmpRepository conexiones = mock(MonitoreoSnmpRepository.class);
     private final EntityManager entityManager = mock(EntityManager.class);
     private final MantenimientoActivoService servicio = new MantenimientoActivoService(
-            activos, historico, conexiones, entityManager);
+            activos, historico, conexiones, entityManager, mock(ReevaluacionAlertas.class));
 
     @Test
     void iniciarSinResponsableOMotivoNoEscribeNiCambiaElActivo() {
@@ -27,6 +27,6 @@ class MantenimientoActivoServiceUnitTest {
             assertThrows(SolicitudInvalidaException.class, () -> servicio.cambiar(1L,
                     new CambiarMantenimientoRequest(true, "Ana", vacio)));
         }
-        verifyNoInteractions(activos, historico, conexiones, entityManager);
+        verifyNoInteractions(activos, historico, conexiones, entityManager, mock(ReevaluacionAlertas.class));
     }
 }

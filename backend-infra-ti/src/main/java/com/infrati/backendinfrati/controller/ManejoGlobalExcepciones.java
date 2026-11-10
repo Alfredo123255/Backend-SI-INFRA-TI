@@ -79,6 +79,11 @@ public class ManejoGlobalExcepciones {
                 "Metodo no permitido para esta ruta", request.getRequestURI()));
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<RespuestaError> manejarJsonInvalido(Exception excepcion,HttpServletRequest request) {
+        return respuesta(HttpStatus.BAD_REQUEST,"La solicitud no tiene un formato válido.",request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<RespuestaError> manejarErrorInterno(
             Exception excepcion,
