@@ -17,7 +17,7 @@ class MantenimientoActivoServiceUnitTest {
     private final MonitoreoSnmpRepository conexiones = mock(MonitoreoSnmpRepository.class);
     private final EntityManager entityManager = mock(EntityManager.class);
     private final MantenimientoActivoService servicio = new MantenimientoActivoService(
-            activos, historico, conexiones, entityManager, mock(ReevaluacionAlertas.class));
+            activos, historico, conexiones, entityManager, mock(ReevaluacionAlertas.class), mock(CierreAdministrativoAlertasService.class));
 
     @Test
     void iniciarSinResponsableOMotivoNoEscribeNiCambiaElActivo() {

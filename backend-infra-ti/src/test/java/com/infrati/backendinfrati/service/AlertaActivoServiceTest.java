@@ -54,7 +54,7 @@ class AlertaActivoServiceTest {
     }
 
     @Test
-    void cp118_excluyeMantenimientoYBajaSinCerrarAlertas() {
+    void listarExcluyeMantenimientoYBajaSinEscribirEnUnaConsulta() {
         long id=crear();insertar(id,"umbral_cpu_uso_ghz",null,null,"Crítica",ahora);
         jdbc.update("UPDATE activo SET mantenimiento_activo=true WHERE id=?",id);
         assertTrue(service.listar(id,null,null).isEmpty());

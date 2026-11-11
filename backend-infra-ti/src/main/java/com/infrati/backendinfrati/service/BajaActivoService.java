@@ -19,14 +19,17 @@ import java.time.ZoneOffset;
 @Service
 public class BajaActivoService {
     private final ReevaluacionAlertas reevaluacion;
+    private final CierreAdministrativoAlertasService cierreAlertas;
     private final ActivoRepository activos;
     private final MonitoreoSnmpRepository conexiones;
     private final HistoricoEstadoRepository historico;
     private final EntityManager entityManager;
 
     public BajaActivoService(ActivoRepository activos, MonitoreoSnmpRepository conexiones,
-            HistoricoEstadoRepository historico, EntityManager entityManager, ReevaluacionAlertas reevaluacion) {
+            HistoricoEstadoRepository historico, EntityManager entityManager, ReevaluacionAlertas reevaluacion,
+            CierreAdministrativoAlertasService cierreAlertas) {
         this.reevaluacion=reevaluacion;
+        this.cierreAlertas=cierreAlertas;
         this.activos = activos;
         this.conexiones = conexiones;
         this.historico = historico;
@@ -89,6 +92,7 @@ public class BajaActivoService {
                 eventos++;
             }
         }
+        eventos += cierreAlertas.cerrar(activo, true, fecha);
         reevaluacion.solicitar(id);
         return new BajaActivoRespuesta(id, EstadoEnum.Baja.name(), activo.getCluster(),
                 Boolean.TRUE.equals(activo.getMantenimientoActivo()), conexionesInactivadas,

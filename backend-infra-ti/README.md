@@ -50,3 +50,10 @@ Los GET de inventario requieren `ver_inventario`; las escrituras de conexiones, 
 Ejecuta la suite contra una base de pruebas con el esquema y migraciones aplicados, definiendo `DB_URL`, `DB_USERNAME` y `DB_PASSWORD` fuera del código. Para los casos del último administrador esa base debe empezar sin usuarios. Deja vacías las tres variables `ADMIN_*` durante las pruebas y ejecuta `./mvnw.cmd test`. Las pruebas de acceso generan sus contraseñas al ejecutarse y revierten sus datos con transacciones.
 
 Referencias: [CSRF](https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html), [sesiones](https://docs.spring.io/spring-security/reference/servlet/authentication/session-management.html) y [CORS](https://docs.spring.io/spring-security/reference/servlet/integrations/cors.html) de Spring Security.
+
+
+## Alertas durante mantenimiento y baja
+
+El inicio de mantenimiento y la baja cierran administrativamente las alertas abiertas en la misma transacción de la acción. Se conserva su causa y se añade el motivo de cierre; no se modifica la última lectura ni se declara una recuperación. El historial distingue estos eventos con `cierre_alerta_<campo>` y el frontend los muestra como «Cierre de alerta / Cerrada».
+
+Al terminar mantenimiento se notifica al ETL una lectura inmediata, manteniendo la frecuencia configurada. Si la condición SNMP persiste en una medición posterior, el ETL abre otro episodio con un nuevo identificador y fecha. EOS mantiene su evaluación por calendario. La baja no reactiva el monitoreo. Esta política utiliza las tablas existentes, sin migraciones adicionales.
