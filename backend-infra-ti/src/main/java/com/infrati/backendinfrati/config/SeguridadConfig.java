@@ -56,6 +56,8 @@ public class SeguridadConfig {
                 .requestMatchers(HttpMethod.PATCH,"/api/activos/*/administrativos").hasAuthority("editar_ciclo_vida")
                 .requestMatchers(HttpMethod.PATCH,"/api/activos/*/mantenimiento").hasAuthority("gestionar_mantenimiento")
                 .requestMatchers(HttpMethod.PATCH,"/api/activos/*/baja").hasAuthority("dar_baja")
+                .requestMatchers(HttpMethod.GET,"/api/activos/ciclo-vida","/api/activos/mantenimiento").hasAnyAuthority("ver_inventario","gestionar_mantenimiento","dar_baja")
+                .requestMatchers(HttpMethod.GET,"/api/umbrales","/api/umbrales/**").hasAuthority("configurar_umbrales")
                 .requestMatchers(HttpMethod.PUT,"/api/umbrales/*").hasAuthority("configurar_umbrales")
                 .requestMatchers(HttpMethod.POST,"/api/datacenters","/api/datacenters/**","/api/clusters","/api/clusters/**").hasAuthority("gestionar_ubicaciones")
                 .requestMatchers(HttpMethod.PUT,"/api/datacenters/**","/api/clusters/**").hasAuthority("gestionar_ubicaciones")

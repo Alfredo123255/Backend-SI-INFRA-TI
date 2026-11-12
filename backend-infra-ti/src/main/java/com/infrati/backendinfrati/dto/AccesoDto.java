@@ -17,7 +17,10 @@ public final class AccesoDto {
         @JsonAlias({"contrasena","contraseña","clave"}) String contrasenaTemporal,@JsonAlias("rol_id") Integer rolId) {
         @Override public String toString() { return "UsuarioCrearSolicitud[datos reservados]"; }
     }
-    public record UsuarioActualizarSolicitud(String nombre,@JsonAlias("rol_id") Integer rolId) {}
+    public record UsuarioActualizarSolicitud(String nombre,@JsonAlias("rol_id") Integer rolId,
+        @JsonAlias({"contraseña","clave"}) String contrasena) {
+        @Override public String toString() { return "UsuarioActualizarSolicitud[datos reservados]"; }
+    }
     public record EstadoUsuarioSolicitud(Boolean activo) {}
     public record CrearRolSolicitud(String nombre) {}
 }

@@ -2,6 +2,7 @@ package com.infrati.backendinfrati.service;
 
 import com.infrati.backendinfrati.dto.ActualizarUmbralRequest;
 import com.infrati.backendinfrati.dto.UmbralRespuesta;
+import com.infrati.backendinfrati.dto.LimiteMetricaRespuesta;
 import com.infrati.backendinfrati.exception.SolicitudInvalidaException;
 import com.infrati.backendinfrati.model.Umbral;
 import com.infrati.backendinfrati.repository.UmbralRepository;
@@ -31,6 +32,12 @@ public class UmbralService {
     @Transactional(readOnly = true)
     public List<UmbralRespuesta> listar() {
         return repository.findAll(Sort.by("nombre")).stream().map(UmbralService::respuesta).toList();
+    }
+
+    @Transactional(readOnly=true)
+    public List<LimiteMetricaRespuesta> limitesMetricas() {
+        return listar().stream().filter(u->!"dias_para_eos".equals(u.nombre()) && !"red_ancho_banda_mbps".equals(u.nombre()))
+            .map(u->new LimiteMetricaRespuesta(u.nombre(),u.advertencia(),u.critico())).toList();
     }
 
     @Transactional

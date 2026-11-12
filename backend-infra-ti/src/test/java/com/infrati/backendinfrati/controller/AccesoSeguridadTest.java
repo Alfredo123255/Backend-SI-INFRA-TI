@@ -166,4 +166,109 @@ class AccesoSeguridadTest {
             .andExpect(status().isOk()).andExpect(header().string("Access-Control-Allow-Credentials","true"))
             .andExpect(header().string("Access-Control-Allow-Origin","http://localhost:5173"));
     }
+
+    private ResultActions editarClave(Usuario solicitante,String campo) throws Exception {
+        return mvc.perform(put("/api/usuarios/"+consulta.getId()).session(login(solicitante)).with(csrf())
+            .contentType("application/json").content("{\"nombre\":\"Consulta editada\",\"rolId\":"+consulta.getRol().getId()+campo+"}"));
+    }
+    @Test void editarContrasenaPermiteLoginNuevoYRechazaAnterior() throws Exception {
+        String nueva=UUID.randomUUID().toString();
+        editarClave(admin,",\"contrasena\":\""+nueva+"\"").andExpect(status().isOk())
+            .andExpect(jsonPath("$.contrasena").doesNotExist()).andExpect(jsonPath("$.contrasena_hash").doesNotExist());
+        var hash=usuarios.findById(consulta.getId()).orElseThrow().getContrasenaHash();
+        assertNotEquals(nueva,hash);assertTrue(encoder.matches(nueva,hash));assertFalse(encoder.matches(clave,hash));
+        mvc.perform(post("/api/auth/login").with(csrf()).contentType("application/json")
+            .content("{\"correo\":\""+consulta.getCorreo()+"\",\"contrasena\":\""+clave+"\"}"))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/login").with(csrf()).contentType("application/json")
+            .content("{\"correo\":\""+consulta.getCorreo()+"\",\"contrasena\":\""+nueva+"\"}"))
+            .andExpect(status().isOk());
+    }
+    @Test void editarSinContrasenaNulaOVaciaConservaHash() throws Exception {
+        String hash=consulta.getContrasenaHash();
+        for(String campo:List.of("",",\"contrasena\":null",",\"contrasena\":\"\"")) {
+            editarClave(admin,campo).andExpect(status().isOk());
+            assertEquals(hash,usuarios.findById(consulta.getId()).orElseThrow().getContrasenaHash());
+        }
+        login(consulta);
+    }
+    @Test void editarContrasenaCortaRechazaSinCambiarHash() throws Exception {
+        String hash=consulta.getContrasenaHash();
+        editarClave(admin,",\"contrasena\":\"corta\"").andExpect(status().isBadRequest());
+        assertEquals(hash,consulta.getContrasenaHash());
+    }
+    @Test void editarContrasenaQueExcede72BytesRechaza() throws Exception {
+        editarClave(admin,",\"contrasena\":\""+"á".repeat(37)+"\"").andExpect(status().isBadRequest());
+    }
+    @Test void editarContrasenaDeOchoCaracteresSeAcepta() throws Exception {
+        editarClave(admin,",\"contrasena\":\"Abc@1234\"").andExpect(status().isOk());
+        assertTrue(encoder.matches("Abc@1234",consulta.getContrasenaHash()));
+    }
+    @Test void usuarioSinPermisoNoCambiaContrasenas() throws Exception {
+        String hash=consulta.getContrasenaHash();
+        editarClave(operador,",\"contrasena\":\"Abc@1234\"").andExpect(status().isForbidden());
+        assertEquals(hash,consulta.getContrasenaHash());
+    }
+    @Test void solicitudDeEdicionNoExponeClaveEnToString() {
+        assertFalse(new UsuarioActualizarSolicitud("Usuario",1,clave).toString().contains(clave));
+    }
+
+    private Usuario usuarioConPermiso(String permiso) {
+        var r=new Rol();r.setNombre("Prueba "+permiso+" "+sufijo);r.aplicarPermisos(Map.of(permiso,true));roles.saveAndFlush(r);
+        var u=crear("aislado","Consulta");u.setRol(r);return usuarios.saveAndFlush(u);
+    }
+    @Test void consultaNoVeConfiguracionUmbralesPeroConservaColoresDeMetricas() throws Exception {
+        var session=login(consulta);
+        mvc.perform(get("/api/umbrales").session(session)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/metricas/limites").session(session)).andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].nombre").exists()).andExpect(jsonPath("$[0].fechaModificacion").doesNotExist())
+            .andExpect(jsonPath("$[?(@.nombre == 'dias_para_eos')]").isEmpty());
+    }
+    @Test void permisoDeUmbralesPermiteConsultarYConfigurarSinInventario() throws Exception {
+        var session=login(usuarioConPermiso("configurar_umbrales"));
+        mvc.perform(get("/api/umbrales").session(session)).andExpect(status().isOk());
+        mvc.perform(put("/api/umbrales/cpu_uso_ghz").session(session).with(csrf()).contentType("application/json")
+            .content("{\"advertencia\":80,\"critico\":90}")).andExpect(status().isOk());
+        mvc.perform(get("/api/servidores").session(session)).andExpect(status().isForbidden());
+    }
+    @Test void mantenimientoSinInventarioPuedeListarYUsarSoloSuAccion() throws Exception {
+        var session=login(usuarioConPermiso("gestionar_mantenimiento"));
+        mvc.perform(get("/api/activos/ciclo-vida").session(session)).andExpect(status().isOk());
+        mvc.perform(get("/api/activos/mantenimiento").session(session)).andExpect(status().isOk());
+        mvc.perform(get("/api/servidores").session(session)).andExpect(status().isForbidden());
+        mvc.perform(patch("/api/activos/0/mantenimiento").session(session).with(csrf()).contentType("application/json").content("{}"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(patch("/api/activos/0/baja").session(session).with(csrf()).contentType("application/json").content("{}"))
+            .andExpect(status().isForbidden());
+    }
+    @Test void bajaSinInventarioPuedeListarYUsarSoloSuAccion() throws Exception {
+        var session=login(usuarioConPermiso("dar_baja"));
+        mvc.perform(get("/api/activos/ciclo-vida").session(session)).andExpect(status().isOk());
+        mvc.perform(get("/api/activos/mantenimiento").session(session)).andExpect(status().isOk());
+        mvc.perform(get("/api/servidores").session(session)).andExpect(status().isForbidden());
+        mvc.perform(patch("/api/activos/0/baja").session(session).with(csrf()).contentType("application/json").content("{}"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(patch("/api/activos/0/mantenimiento").session(session).with(csrf()).contentType("application/json").content("{}"))
+            .andExpect(status().isForbidden());
+    }
+    @Test void consultaPuedeVerCicloVidaPeroNoEjecutaAcciones() throws Exception {
+        var session=login(consulta);
+        mvc.perform(get("/api/activos/ciclo-vida").session(session)).andExpect(status().isOk());
+        for(String accion:List.of("baja","mantenimiento"))
+            mvc.perform(patch("/api/activos/0/"+accion).session(session).with(csrf()).contentType("application/json").content("{}"))
+                .andExpect(status().isForbidden());
+    }
+    @Test void listaOperativaSoloExponeIdentificacionYEstado() throws Exception {
+        jdbc.update("INSERT INTO datacenters(nombre) VALUES (?)",sufijo);
+        jdbc.update("INSERT INTO activo(numero_serie,hostname,ubicacion,tipo_activo,estado_operativo) VALUES(?,?,?,'STORAGE','Encendido')",sufijo,"Equipo permisos "+sufijo,sufijo);
+        String resultado=mvc.perform(get("/api/activos/ciclo-vida").session(login(consulta))).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        assertTrue(resultado.contains("Equipo permisos "+sufijo));
+        assertFalse(resultado.contains("numero_serie"));assertFalse(resultado.contains("ip_gestion"));assertFalse(resultado.contains("contrasena"));
+    }
+    @Test void sinPermisosNoPuedeLeerCicloVidaNiUmbrales() throws Exception {
+        var session=login(usuarioConPermiso("exportar"));
+        for(String ruta:List.of("/api/activos/ciclo-vida","/api/activos/mantenimiento","/api/umbrales","/api/metricas/limites"))
+            mvc.perform(get(ruta).session(session)).andExpect(status().isForbidden());
+    }
 }

@@ -3,6 +3,7 @@ package com.infrati.backendinfrati.service;
 import com.infrati.backendinfrati.dto.AccesoDto.*;
 import com.infrati.backendinfrati.exception.RecursoDuplicadoException;
 import com.infrati.backendinfrati.exception.SolicitudInvalidaException;
+
 import com.infrati.backendinfrati.model.Rol;
 import com.infrati.backendinfrati.model.Usuario;
 import com.infrati.backendinfrati.repository.RolRepository;
@@ -79,7 +80,9 @@ public class AccesoService {
     public UsuarioRespuesta actualizarUsuario(Integer id,UsuarioActualizarSolicitud s) {
         bloquear();
         if(s==null)throw new SolicitudInvalidaException("Completa los datos del usuario.");
-        var u=usuario(id);u.setNombre(nombre(s.nombre()));u.setRol(rol(s.rolId()));usuarios.saveAndFlush(u);
+        var u=usuario(id);u.setNombre(nombre(s.nombre()));u.setRol(rol(s.rolId()));
+        if(s.contrasena()!=null && !s.contrasena().isEmpty())u.setContrasenaHash(codificar(s.contrasena()));
+        usuarios.saveAndFlush(u);
         exigirAdministradorActivo();return respuesta(u);
     }
     @Transactional
