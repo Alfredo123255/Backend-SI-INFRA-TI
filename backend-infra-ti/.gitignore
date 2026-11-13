@@ -40,3 +40,9 @@ build/
 CLAVES-DESPLIEGUE-PRIVADO.md
 snmp_credentials.key
 snmp_credentials.backup.enc
+
+# Registros y estado local de herramientas
+*.log
+.claude/
+run8090.log
+.claude/scheduled_tasks.lock

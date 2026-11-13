@@ -41,7 +41,9 @@ public class MetricasServidorService {
         List<Long> ids = comparar == null ? List.of() : comparar;
         Set<Long> permitidos = opciones.stream().map(Opcion::id).collect(Collectors.toSet());
         if (ids.size() > 3 || new HashSet<>(ids).size() != ids.size() || !permitidos.containsAll(ids)) {
-            throw new SolicitudInvalidaException("Selecciona hasta tres equipos distintos del mismo tipo.");
+            throw new SolicitudInvalidaException(Set.of("RACKEABLE", "BLADE").contains(ficha.tipo())
+                    ? "Selecciona hasta tres servidores distintos (rackeables o blade)."
+                    : "Selecciona hasta tres equipos distintos del mismo tipo.");
         }
         var intervalos = rango.intervalos();
         return new MetricasServidorRespuesta(cargar(ficha, rango, intervalos),
@@ -56,7 +58,8 @@ public class MetricasServidorService {
     private Servidor cargar(Ficha ficha, Rango rango, List<LocalDateTime> intervalos) {
         boolean storage = "STORAGE".equals(ficha.tipo());
         boolean esSwitch = "SWITCH".equals(ficha.tipo());
-        var nombres = storage ? MetricasServidorRepository.METRICAS_STORAGE
+        var nombres = "CHASIS".equals(ficha.tipo()) ? MetricasServidorRepository.METRICAS_CHASIS
+                : storage ? MetricasServidorRepository.METRICAS_STORAGE
                 : esSwitch ? MetricasServidorRepository.METRICAS_SWITCH : MetricasServidorRepository.METRICAS;
         var actuales = (esSwitch ? repository.actualesSwitch(ficha.id()) : repository.actuales(ficha.id(), nombres)).stream()
                 .collect(Collectors.toMap(Lectura::nombre, Function.identity()));
@@ -146,10 +149,12 @@ public class MetricasServidorService {
                 if (desde == null || hasta == null || desde.isAfter(hasta) || hasta.isAfter(dia.toLocalDate())) {
                     throw new SolicitudInvalidaException("Indica un rango válido de fechas hasta hoy.");
                 }
-                long dias = ChronoUnit.DAYS.between(desde, hasta) + 1;
-                LocalDateTime fin = hasta.plusDays(1).atStartOfDay();
+                // Entre fechas distintas, Hasta es exclusivo: 10 -> 11 son 24 horas.
+                // La misma fecha sigue permitiendo consultar ese día calendario completo.
+                long dias = Math.max(1, ChronoUnit.DAYS.between(desde, hasta));
+                LocalDateTime fin = (desde.equals(hasta) ? hasta.plusDays(1) : hasta).atStartOfDay();
                 yield new Rango(desde.atStartOfDay(), fin,
-                        dias == 1 ? Agrupacion.HORA : dias <= 30 ? Agrupacion.DIA : Agrupacion.SEMANA);
+                        dias < 7 ? Agrupacion.HORA : dias <= 90 ? Agrupacion.DIA : Agrupacion.SEMANA);
             }
             default -> throw new SolicitudInvalidaException("El periodo solicitado no es válido.");
         };

@@ -21,6 +21,7 @@ public class MetricasServidorRepository {
             "almacenamiento_uso_tb", "almacenamiento_iops", "almacenamiento_latencia_ms",
             "almacenamiento_throughput_lectura_mbps", "almacenamiento_throughput_escritura_mbps",
             "equipo_temperatura_c", "equipo_consumo_w", "red_trafico_entrada_mbps", "red_trafico_salida_mbps");
+    public static final List<String> METRICAS_CHASIS = List.of("equipo_temperatura_c", "equipo_consumo_w");
     public static final List<String> METRICAS_SWITCH = List.of(
             "cpu_uso_ghz", "equipo_temperatura_c", "equipo_consumo_w",
             "red_trafico_entrada_mbps", "red_trafico_salida_mbps", "red_utilizacion_pct");
@@ -57,10 +58,10 @@ public class MetricasServidorRepository {
 
     public Optional<Ficha> ficha(long id) {
         return jdbc.query("""
-                SELECT a.id, a.hostname, CASE WHEN sw.id IS NOT NULL THEN 'SWITCH' WHEN st.id IS NOT NULL THEN 'STORAGE' ELSE s.tipo END AS tipo, conexion.estado_conexion,
+                SELECT a.id, a.hostname, CASE WHEN ch.id IS NOT NULL THEN 'CHASIS' WHEN sw.id IS NOT NULL THEN 'SWITCH' WHEN st.id IS NOT NULL THEN 'STORAGE' ELSE s.tipo END AS tipo, conexion.estado_conexion,
                        st.capacidad_total_tb,
                        cpu.total AS cpu, ram.total AS ram, disco.total AS disco, disco.cantidad
-                FROM activo a LEFT JOIN servidor s ON s.id = a.id LEFT JOIN storage st ON st.id = a.id LEFT JOIN switch sw ON sw.id = a.id
+                FROM activo a LEFT JOIN servidor s ON s.id = a.id LEFT JOIN storage st ON st.id = a.id LEFT JOIN switch sw ON sw.id = a.id LEFT JOIN chasis_blade ch ON ch.id=a.id
                 LEFT JOIN LATERAL (
                     SELECT estado_conexion FROM monitoreo_snmp WHERE activo_id = a.id ORDER BY id DESC LIMIT 1
                 ) conexion ON true
@@ -78,7 +79,7 @@ public class MetricasServidorRepository {
                                 THEN sum(capacidad_gb) END AS total, count(*) AS cantidad
                     FROM disco WHERE activo_id = a.id
                 ) disco
-                WHERE a.id = ? AND (s.id IS NOT NULL OR st.id IS NOT NULL OR sw.id IS NOT NULL)
+                WHERE a.id = ? AND (s.id IS NOT NULL OR st.id IS NOT NULL OR sw.id IS NOT NULL OR ch.id IS NOT NULL)
                 """, (rs, n) -> new Ficha(rs.getLong("id"), rs.getString("hostname"), rs.getString("tipo"),
                 rs.getString("estado_conexion"), rs.getBigDecimal("cpu"), rs.getBigDecimal("ram"),
                 rs.getBigDecimal("disco"), rs.getLong("cantidad") > 0, rs.getBigDecimal("capacidad_total_tb")), id).stream().findFirst();
@@ -87,11 +88,11 @@ public class MetricasServidorRepository {
     public List<Opcion> disponibles(long id, String tipo) {
         return jdbc.query("""
                 SELECT a.id, a.hostname FROM activo a
-                LEFT JOIN servidor s ON s.id = a.id LEFT JOIN storage st ON st.id = a.id LEFT JOIN switch sw ON sw.id = a.id
-                WHERE (s.tipo = ? OR (? = 'STORAGE' AND st.id IS NOT NULL) OR (? = 'SWITCH' AND sw.id IS NOT NULL))
+                LEFT JOIN servidor s ON s.id = a.id LEFT JOIN storage st ON st.id = a.id LEFT JOIN switch sw ON sw.id = a.id LEFT JOIN chasis_blade ch ON ch.id=a.id
+                WHERE ((? IN ('RACKEABLE', 'BLADE') AND s.tipo IN ('RACKEABLE', 'BLADE')) OR (? = 'STORAGE' AND st.id IS NOT NULL) OR (? = 'SWITCH' AND sw.id IS NOT NULL) OR (? = 'CHASIS' AND ch.id IS NOT NULL))
                   AND a.id <> ? AND a.estado_operativo <> 'Baja'
                 ORDER BY lower(a.hostname), a.id
-                """, (rs, n) -> new Opcion(rs.getLong(1), rs.getString(2)), tipo, tipo, tipo, id);
+                """, (rs, n) -> new Opcion(rs.getLong(1), rs.getString(2)), tipo, tipo, tipo, tipo, id);
     }
 
     // La capacidad corresponde a la última actualización completada por el ETL.

@@ -51,7 +51,7 @@ class ConexionSnmpServiceTest {
         });
         ActivoCreado creado = new ActivoCreado(true, 44L, 12L, "CLUSTER-LAB-LOCAL", "SW-44",
                 "sw01", "HPE Aruba Networking", "SWITCH", "Encendido", "CX 6300M",
-                "DC-LAB-LOCAL", Map.of(), 4, 2);
+                "DC-LIMA", Map.of(), 4, 2);
         when(cliente.crearActivo(any())).thenReturn(creado);
         assertEquals(44L, servicio.registrarYCrear(solicitud()).activoId());
         InOrder orden = inOrder(conexiones, cliente);

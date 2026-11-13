@@ -6,7 +6,7 @@ La API utiliza Spring Security, contraseñas BCrypt y una sesión del servidor i
 
 ### Preparación y primer administrador
 
-1. En PostgreSQL aplica `ETL_INFRA_TI/migrations/004_usuarios_roles.sql` sobre la misma base que usa Java. La migración crea `rol`, `usuario` y los tres roles iniciales; no crea usuarios. Hibernate usa `ddl-auto=validate`, por lo que no sustituye esta migración. En la base local `postgres` esta migración ya fue aplicada durante la implementación.
+1. En PostgreSQL aplica `ETL_INFRA_TI/migrations/005_usuarios_roles.sql` sobre la misma base que usa Java. La migración crea `rol`, `usuario` y los tres roles iniciales; no crea usuarios. Hibernate usa `ddl-auto=validate`, por lo que no sustituye esta migración. En la base local `postgres` esta migración ya fue aplicada durante la implementación.
 2. Desde la carpeta `backend-infra-ti`, prepara `.env` tomando `.env.example` como referencia. Conserva las credenciales locales de PostgreSQL y la configuración existente de integración con FastAPI. No sobrescribas un `.env` que ya funciona.
 3. Solo para la primera ejecución, define en ese `.env` privado `ADMIN_CORREO`, `ADMIN_NOMBRE` y `ADMIN_CONTRASENA`, o suminístralos como variables del proceso. Escoge tú los valores; la contraseña debe tener al menos ocho caracteres y como máximo 72 bytes UTF-8, que es el límite de BCrypt. Ninguna contraseña inicial viene en el repositorio.
 4. Con Java 21, ejecuta `./mvnw.cmd spring-boot:run` desde `backend-infra-ti`. Si `usuario` está vacía y las tres variables tienen contenido, se crea el administrador con la contraseña cifrada mediante BCrypt. Si falta alguna variable o ya existe un usuario, no se crea ninguno. Un correo o contraseña inválidos en la configuración inicial impiden completar el arranque y deben corregirse.
@@ -31,7 +31,7 @@ Las solicitudes POST, PUT, PATCH y DELETE, incluido el login, deben enviar el va
 | Ruta | Operación | Permiso |
 | --- | --- | --- |
 | `/api/usuarios` | GET, POST | administrar_usuarios |
-| `/api/usuarios/{id}` | PUT (nombre y rol, sin modificar correo) | administrar_usuarios |
+| `/api/usuarios/{id}` | PUT (nombre, rol y contraseña opcional; sin modificar correo) | administrar_usuarios |
 | `/api/usuarios/{id}/estado` | PATCH `{ "activo": true/false }` | administrar_usuarios |
 | `/api/roles` | GET, POST | administrar_usuarios |
 | `/api/roles/{id}/permisos` | PUT con los nueve booleanos | administrar_usuarios |
@@ -57,3 +57,23 @@ Referencias: [CSRF](https://docs.spring.io/spring-security/reference/servlet/exp
 El inicio de mantenimiento y la baja cierran administrativamente las alertas abiertas en la misma transacción de la acción. Se conserva su causa y se añade el motivo de cierre; no se modifica la última lectura ni se declara una recuperación. El historial distingue estos eventos con `cierre_alerta_<campo>` y el frontend los muestra como «Cierre de alerta / Cerrada».
 
 Al terminar mantenimiento se notifica al ETL una lectura inmediata, manteniendo la frecuencia configurada. Si la condición SNMP persiste en una medición posterior, el ETL abre otro episodio con un nuevo identificador y fecha. EOS mantiene su evaluación por calendario. La baja no reactiva el monitoreo. Esta política utiliza las tablas existentes, sin migraciones adicionales.
+
+
+## Rendimiento del inventario y disponibilidad
+
+Los listados conservan los campos, filtros y orden existentes. El listado de servidores obtiene las capacidades de CPU y RAM y su última medición en una consulta conjunta para todos los identificadores seleccionados, además de la consulta del listado. No carga discos ni colecciones de componentes para calcular esas filas. Las fichas de detalle conservan sus cálculos completos. Los switches obtienen las velocidades de todos sus puertos en otra consulta conjunta; storage y chasis ya usan un listado simple. Hibernate dispone de `default_batch_fetch_size=100` para las demás cargas de colecciones.
+
+`InventarioRendimientoTest` prepara 1000 equipos de cada categoría en una base cuyo nombre contiene `test`, cuenta las sentencias ejecutadas tanto por Hibernate como por JDBC y verifica las respuestas HTTP, su tiempo inferior a 3 segundos y que el número de consultas no aumente al pasar de 100 a 1000 servidores. Sus datos se revierten al terminar. Puede ejecutarse con `./mvnw.cmd -Dtest=InventarioRendimientoTest test`, definiendo previamente la conexión de pruebas fuera del código. La medición local no sustituye una prueba con la concurrencia e historial de producción.
+
+Para IND-01, únicamente es disponible un activo `Encendido` con conexión SNMP `Activo`. Una conexión `Inactivo`, `Sin conexión` o ausente no aporta disponibilidad. El denominador sigue excluyendo mantenimiento y Baja.
+
+## Métricas de chasis
+
+`GET /api/activos/{id}/metricas` admite también `CHASIS`, conservando el contrato de respuesta existente. Consulta `equipo_temperatura_c` y `equipo_consumo_w` guardadas por el ETL. Admite los mismos periodos y agrupación en hora de Lima. Si una métrica no tiene lecturas, devuelve valores nulos e intervalos vacíos; no calcula ni fabrica mediciones. El listado del inventario del chasis conserva su ruta `/api/chasis-blade`.
+
+En instalaciones existentes aplicar `ETL_INFRA_TI/migrations/007_indices_componentes_activo.sql` fuera de una transacción. Crea concurrentemente índices por `activo_id` en las siete tablas de componentes. Para bases nuevas esos índices ya están en `schema.sql`.
+
+
+### Duración de rangos personalizados de métricas
+
+Para fechas distintas, Desde es inclusivo y Hasta exclusivo, a medianoche en Lima: del 10 al 11 representa 24 horas y 24 intervalos horarios. Seleccionar la misma fecha en ambos campos consulta ese día completo. Los rangos de menos de 7 días se agrupan por hora; de 7 a 90 días, por día; más de 90 días, por semana. El botón de 7 días conserva su agrupación diaria. Los gráficos horarios que abarcan más de una fecha muestran fecha y hora. Los periodos predefinidos conservan su comportamiento. El frontend muestra el límite de Hasta y usa la agrupación devuelta por el backend para todos los gráficos y equipos comparados.

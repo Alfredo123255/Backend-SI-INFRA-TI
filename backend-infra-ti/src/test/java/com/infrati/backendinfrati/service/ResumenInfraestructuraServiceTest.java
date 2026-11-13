@@ -148,4 +148,15 @@ class ResumenInfraestructuraServiceTest {
         jdbc.update("INSERT INTO alerta(activo_id,campo,severidad,descripcion,fecha_inicio,ultima_verificacion) VALUES (?,?,?,'Prueba',?,?)",id,campo,severidad,lectura,lectura);
     }
     private static void igual(double esperado,BigDecimal valor) { assertNotNull(valor);assertEquals(esperado,valor.doubleValue(),1e-8); }
+
+    @Test void ind01_soloEncendidoConConexionActivaEstaDisponible() {
+        long activo=servidor("RACKEABLE",10,100),inactivo=servidor("RACKEABLE",10,100),
+            sinConexion=servidor("BLADE",10,100),sinRegistro=servidor("BLADE",10,100);
+        jdbc.update("UPDATE monitoreo_snmp SET estado_conexion='Inactivo' WHERE activo_id=?",inactivo);
+        jdbc.update("UPDATE monitoreo_snmp SET estado_conexion='Sin conexión' WHERE activo_id=?",sinConexion);
+        jdbc.update("DELETE FROM monitoreo_snmp WHERE activo_id=?",sinRegistro);
+        var resultado=service.inicio();assertEquals(4,resultado.total());igual(25,resultado.disponibilidad());
+        jdbc.update("UPDATE monitoreo_snmp SET estado_conexion='Inactivo' WHERE activo_id=?",activo);
+        assertEquals(4,service.inicio().total());igual(0,service.inicio().disponibilidad());
+    }
 }

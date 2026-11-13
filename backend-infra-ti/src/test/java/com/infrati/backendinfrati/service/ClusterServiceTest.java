@@ -31,26 +31,26 @@ class ClusterServiceTest {
 
     @Test
     void creaClusterConAmbienteNormalizadoYDatacenterExistente() {
-        when(datacenters.existsById("DC-LAB-LOCAL")).thenReturn(true);
+        when(datacenters.existsById("DC-LIMA")).thenReturn(true);
         when(clusters.saveAndFlush(any(Cluster.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var creado = service.crear(new CrearClusterRequest(" CLUSTER-NUEVO ", "qa", " DC-LAB-LOCAL "));
+        var creado = service.crear(new CrearClusterRequest(" CLUSTER-NUEVO ", "qa", " DC-LIMA "));
 
         assertEquals("CLUSTER-NUEVO", creado.nombre());
         assertEquals("QA", creado.ambiente());
-        assertEquals("DC-LAB-LOCAL", creado.datacenter());
+        assertEquals("DC-LIMA", creado.datacenter());
     }
 
     @Test
     void rechazaDuplicadosYReferenciasInvalidas() {
-        when(datacenters.existsById("DC-LAB-LOCAL")).thenReturn(true);
+        when(datacenters.existsById("DC-LIMA")).thenReturn(true);
         when(clusters.existsById("CLUSTER-NUEVO")).thenReturn(true);
         assertThrows(RecursoDuplicadoException.class, () -> service.crear(
-                new CrearClusterRequest("CLUSTER-NUEVO", "QA", "DC-LAB-LOCAL")));
+                new CrearClusterRequest("CLUSTER-NUEVO", "QA", "DC-LIMA")));
         assertThrows(RecursoNoEncontradoException.class, () -> service.crear(
                 new CrearClusterRequest("OTRO", "QA", "DC-INEXISTENTE")));
         assertThrows(SolicitudInvalidaException.class, () -> service.crear(
-                new CrearClusterRequest("OTRO", "INVALIDO", "DC-LAB-LOCAL")));
+                new CrearClusterRequest("OTRO", "INVALIDO", "DC-LIMA")));
     }
 
     @Test

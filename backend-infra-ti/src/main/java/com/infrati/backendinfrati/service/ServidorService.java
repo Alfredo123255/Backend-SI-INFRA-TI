@@ -3,6 +3,7 @@ package com.infrati.backendinfrati.service;
 import com.infrati.backendinfrati.dto.ServidorListadoDTO;
 import com.infrati.backendinfrati.model.Activos.Servidor;
 import com.infrati.backendinfrati.repository.ServidorRepository;
+import com.infrati.backendinfrati.repository.InventarioResumenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,17 +15,23 @@ public class ServidorService {
 
     private final ServidorRepository repository;
     private final DatosDerivadosActivo datosDerivados;
+    private final InventarioResumenRepository resumen;
 
-    public ServidorService(ServidorRepository repository, DatosDerivadosActivo datosDerivados) {
+    public ServidorService(ServidorRepository repository, DatosDerivadosActivo datosDerivados, InventarioResumenRepository resumen) {
+        this.resumen=resumen;
         this.repository = repository;
         this.datosDerivados = datosDerivados;
     }
 
     public List<ServidorListadoDTO> listar(String estado, String ubicacion, String proyecto, String fabricante, String q) {
-        return repository.buscar(estado, ubicacion, proyecto, fabricante, q).stream()
-                .map(this::completarTotalesYUso)
-                .map(this::aListadoDTO)
-                .toList();
+        var equipos=repository.buscar(estado, ubicacion, proyecto, fabricante, q);
+        var calculos=resumen.servidores(equipos.stream().map(Servidor::getId).toList());
+        return equipos.stream().map(s->{
+            var datos=calculos.get(s.getId());
+            s.setCpuTotalGhz(redondear(datos.cpu()));s.setRamTotalGb(redondear(datos.ram()));
+            s.setCpuUsoGhz(datos.usoCpu());s.setRamUsoGb(datos.usoRam());
+            return aListadoDTO(s);
+        }).toList();
     }
 
     public Servidor detalle(Long id) {
@@ -63,6 +70,8 @@ public class ServidorService {
                 .usoRamPct(porcentaje(s.getRamUsoGb(), s.getRamTotalGb()))
                 .build();
     }
+
+    private static Double redondear(Double valor) { return valor==null?null:Math.round(valor*100.0)/100.0; }
 
     private static Double porcentaje(Double uso, Double total) {
         if (uso == null || total == null || total == 0) {

@@ -46,7 +46,7 @@ class EtlClientTest {
                 {"ok":true,"activo_id":44,"conexion_id":12,"cluster_id":"CLUSTER-LAB-LOCAL",
                  "numero_serie":"SW-44","hostname":"sw01","fabricante":"HPE Aruba Networking",
                  "tipo_activo":"SWITCH","estado_operativo":"Encendido","modelo":"CX 6300M",
-                 "ubicacion":"DC-LAB-LOCAL","componentes":{"puerto_switch":52},
+                 "ubicacion":"DC-LIMA","componentes":{"puerto_switch":52},
                  "metricas_guardadas":4,"eventos_registrados":2}
                 """);
         });

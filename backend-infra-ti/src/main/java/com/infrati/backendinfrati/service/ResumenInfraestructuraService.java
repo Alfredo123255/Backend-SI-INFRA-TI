@@ -102,7 +102,7 @@ public class ResumenInfraestructuraService {
     public Inicio inicio() {
         var d=datos(); var a=d.considerados(); var grupo=grupo(d,"todos","Todos los datacenters",a,true,null);
         var fecha=a.stream().map(Activo::actualizacion).filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
-        long disponibles=a.stream().filter(e->"Encendido".equals(e.estado()) && !"Sin conexión".equals(e.conexion())).count();
+        long disponibles=a.stream().filter(e->"Encendido".equals(e.estado()) && "Activo".equals(e.conexion())).count();
         var hoy=LocalDate.now(LIMA); var dias=d.avisos().get("dias_para_eos");
         return new Inicio(utc(fecha),a.size(),a.isEmpty()?null:porcentaje(BigDecimal.valueOf(disponibles),BigDecimal.valueOf(a.size())),
             grupo.criticas(),grupo.medias(),List.of(capacidad("CPU",grupo.cpu(),d.avisos().get("cpu_uso_ghz")),

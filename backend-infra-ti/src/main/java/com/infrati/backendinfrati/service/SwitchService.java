@@ -2,8 +2,8 @@ package com.infrati.backendinfrati.service;
 
 import com.infrati.backendinfrati.dto.SwitchListadoDTO;
 import com.infrati.backendinfrati.model.Activos.Switch;
-import com.infrati.backendinfrati.model.Componentes.PuertoSwitch;
 import com.infrati.backendinfrati.repository.SwitchRepository;
+import com.infrati.backendinfrati.repository.InventarioResumenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,16 +15,18 @@ public class SwitchService {
 
     private final SwitchRepository repository;
     private final DatosDerivadosActivo datosDerivados;
+    private final InventarioResumenRepository resumen;
 
-    public SwitchService(SwitchRepository repository, DatosDerivadosActivo datosDerivados) {
+    public SwitchService(SwitchRepository repository, DatosDerivadosActivo datosDerivados, InventarioResumenRepository resumen) {
+        this.resumen=resumen;
         this.repository = repository;
         this.datosDerivados = datosDerivados;
     }
 
     public List<SwitchListadoDTO> listar(String estado, String ubicacion, String proyecto, String fabricante, String q) {
-        return repository.buscar(estado, ubicacion, proyecto, fabricante, q).stream()
-                .map(this::aListadoDTO)
-                .toList();
+        var equipos=repository.buscar(estado, ubicacion, proyecto, fabricante, q);
+        var velocidades=resumen.velocidadesSwitch(equipos.stream().map(Switch::getId).toList());
+        return equipos.stream().map(equipo->aListadoDTO(equipo,velocidades.getOrDefault(equipo.getId(),List.of()))).toList();
     }
 
     public Switch detalle(Long id) {
@@ -47,7 +49,7 @@ public class SwitchService {
         return equipo;
     }
 
-    private SwitchListadoDTO aListadoDTO(Switch equipo) {
+    private SwitchListadoDTO aListadoDTO(Switch equipo, List<String> velocidades) {
         return SwitchListadoDTO.builder()
                 .id(equipo.getId())
                 .numeroSerial(equipo.getNumero_serie())
@@ -57,7 +59,7 @@ public class SwitchService {
                 .ubicacion(equipo.getUbicacion())
                 .estadoOperativo(equipo.getEstado_operativo() == null ? null : equipo.getEstado_operativo().name())
                 .tipoRed(equipo.getTipoRED())
-                .velocidad(velocidadesPuertos(equipo))
+                .velocidad(velocidadesPuertos(velocidades))
                 .cantidadPuertosOcupados(equipo.getCantidad_puertos_ocupados())
                 .cantidadPuertosTotales(equipo.getCantidad_puertos())
                 .ipGestion(equipo.getIp_gestion())
@@ -72,12 +74,11 @@ public class SwitchService {
      * por " / ", con la unidad (Gbps) una sola vez al final -
      * ej. "10 / 50 Gbps" en vez de "10 Gbps / 50 Gbps".
      */
-    private String velocidadesPuertos(Switch s) {
-        if (s.getPuertos() == null || s.getPuertos().isEmpty()) {
+    private String velocidadesPuertos(List<String> velocidades) {
+        if (velocidades.isEmpty()) {
             return null;
         }
-        List<String> valores = s.getPuertos().stream()
-                .map(PuertoSwitch::getVelocidad)
+        List<String> valores = velocidades.stream()
                 .filter(v -> v != null && !v.isBlank())
                 .distinct()
                 .toList();
