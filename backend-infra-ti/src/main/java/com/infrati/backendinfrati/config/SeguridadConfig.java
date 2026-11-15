@@ -48,6 +48,7 @@ public class SeguridadConfig {
             .exceptionHandling(e->e.authenticationEntryPoint((req,res,ex)->ActualizarSesionFilter.error(res,401,"Inicia sesión para continuar."))
                 .accessDeniedHandler((req,res,ex)->ActualizarSesionFilter.error(res,403,"No tienes permiso para realizar esta acción.")))
             .authorizeHttpRequests(a->a
+                .requestMatchers(HttpMethod.GET,"/healthz").permitAll()
                 .requestMatchers("/error","/api/auth/login","/api/auth/csrf").permitAll()
                 .requestMatchers("/api/auth/me").authenticated()
                 .requestMatchers("/api/usuarios","/api/usuarios/**","/api/roles","/api/roles/**").hasAuthority("administrar_usuarios")

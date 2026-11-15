@@ -45,4 +45,19 @@ public class AlertaActivoRepository {
                     rs.getObject("dias_restantes",Integer.class));
         });
     }
+
+    public List<Cierre> cerrarAbiertasPorActivo(Long activoId, LocalDateTime fecha, String motivo) {
+        return jdbc.query("""
+                UPDATE alerta SET fecha_resolucion=GREATEST(fecha_inicio,?),
+                    descripcion=descripcion || E'\\n' || ?
+                WHERE activo_id=? AND fecha_resolucion IS NULL
+                RETURNING id,campo,componente_tipo,componente_sn,descripcion,fecha_resolucion
+                """, (rs, fila) -> new Cierre(rs.getInt("id"), rs.getString("campo"),
+                        rs.getString("componente_tipo"), rs.getString("componente_sn"),
+                        rs.getString("descripcion"), rs.getTimestamp("fecha_resolucion").toLocalDateTime()),
+                fecha, motivo, activoId);
+    }
+
+    public record Cierre(int id, String campo, String tipo, String serial,
+                          String descripcion, LocalDateTime fecha) {}
 }

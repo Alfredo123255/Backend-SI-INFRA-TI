@@ -3,7 +3,10 @@ package com.infrati.backendinfrati.service;
 import com.infrati.backendinfrati.dto.ResumenInfraestructura.*;
 import com.infrati.backendinfrati.dto.AlertaActivo;
 import com.infrati.backendinfrati.exception.SolicitudInvalidaException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.infrati.backendinfrati.repository.ResumenInfraestructuraRepository;
+import com.infrati.backendinfrati.repository.ResumenInfraestructuraRepository.Activo;
+import com.infrati.backendinfrati.repository.ResumenInfraestructuraRepository.Centro;
+import com.infrati.backendinfrati.repository.ResumenInfraestructuraRepository.Cluster;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,79 +27,22 @@ public class ResumenInfraestructuraService {
     private static final BigDecimal CIEN = BigDecimal.valueOf(100);
     private static final Map<String,String> TIPOS = Map.of("rackeable","Servidor rackeable",
             "blade","Servidor blade","storage","Storage","switch","Switch","chasis","Chasis blade");
-    private final JdbcTemplate jdbc;
+    private final ResumenInfraestructuraRepository repository;
     private final AlertaActivoService alertas;
-    public ResumenInfraestructuraService(JdbcTemplate jdbc, AlertaActivoService alertas) {
-        this.jdbc=jdbc; this.alertas=alertas;
+    public ResumenInfraestructuraService(ResumenInfraestructuraRepository repository, AlertaActivoService alertas) {
+        this.repository=repository; this.alertas=alertas;
     }
 
-    private record Centro(String nombre, BigDecimal latitud, BigDecimal longitud) {}
-    private record Cluster(String nombre, String datacenter) {}
-    private record Activo(long id, String hostname, String datacenter, String cluster, String tipo,
-            String estado, boolean mantenimiento, String conexion, LocalDateTime actualizacion,
-            String modelo, LocalDate eos, String inicioMantenimiento, BigDecimal cpuUso,
-            BigDecimal cpuCapacidad, BigDecimal ramUso, BigDecimal ramCapacidad,
-            BigDecimal almacenamientoUso, BigDecimal almacenamientoCapacidad, BigDecimal temperatura) {
-        boolean considerado() { return !mantenimiento && !"Baja".equals(estado); }
-        boolean servidor() { return "rackeable".equals(tipo) || "blade".equals(tipo); }
-    }
     private record Datos(List<Activo> todos, List<Activo> considerados, List<Centro> centros,
             List<Cluster> clusters, Map<Long,List<AlertaActivo>> alertas, Map<String,BigDecimal> avisos) {}
 
     private Datos datos() {
-        // Las capacidades son inválidas si falta el dato de cualquier módulo, igual que en el ETL.
-        // DISTINCT ON evita contar dos veces una medición repetida; nunca busca una fecha anterior.
-        var activos=jdbc.query("""
-            WITH capacidades_cpu AS (
-                SELECT activo_id, CASE WHEN bool_and(velocidad_ghz IS NOT NULL AND velocidad_ghz>0
-                    AND cantidad_nucleos IS NOT NULL AND cantidad_nucleos>0)
-                    THEN sum(velocidad_ghz*cantidad_nucleos) END capacidad FROM cpu GROUP BY activo_id
-            ), capacidades_ram AS (
-                SELECT activo_id, CASE WHEN bool_and(capacidad_gb IS NOT NULL AND capacidad_gb>0)
-                    THEN sum(capacidad_gb) END capacidad FROM ram GROUP BY activo_id
-            )
-            SELECT a.*, s.tipo tipo_servidor, c.capacidad cpu_capacidad, r.capacidad ram_capacidad,
-                   st.capacidad_total_tb, sn.estado_conexion, h.descripcion inicio_mantenimiento,
-                   m.cpu_uso, m.ram_uso, m.almacenamiento_uso, m.temperatura_actual
-            FROM activo a LEFT JOIN servidor s ON s.id=a.id
-            LEFT JOIN capacidades_cpu c ON c.activo_id=a.id
-            LEFT JOIN capacidades_ram r ON r.activo_id=a.id
-            LEFT JOIN storage st ON st.id=a.id
-            LEFT JOIN LATERAL (SELECT estado_conexion FROM monitoreo_snmp
-                WHERE activo_id=a.id ORDER BY id DESC LIMIT 1) sn ON true
-            LEFT JOIN LATERAL (SELECT descripcion FROM historico_estado WHERE activo_id=a.id
-                AND campo='mantenimiento_activo' AND valor_nuevo='true'
-                ORDER BY fecha_cambio DESC,id DESC LIMIT 1) h ON true
-            LEFT JOIN LATERAL (
-                SELECT max(valor) FILTER (WHERE nombre_metrica='cpu_uso_ghz') cpu_uso,
-                       max(valor) FILTER (WHERE nombre_metrica='ram_uso_gb') ram_uso,
-                       max(valor) FILTER (WHERE nombre_metrica='almacenamiento_uso_tb') almacenamiento_uso,
-                       max(valor) FILTER (WHERE nombre_metrica='equipo_temperatura_c') temperatura_actual
-                FROM (SELECT DISTINCT ON (nombre_metrica,componente_tipo,componente_serial)
-                    nombre_metrica,valor FROM metrica_historica
-                    WHERE activo_id=a.id AND fecha_medicion=a.ultima_actualizacion
-                      AND nombre_metrica IN ('cpu_uso_ghz','ram_uso_gb','almacenamiento_uso_tb','equipo_temperatura_c')
-                      AND componente_tipo IS NULL AND componente_serial IS NULL
-                    ORDER BY nombre_metrica,componente_tipo,componente_serial,id DESC) lectura
-            ) m ON true ORDER BY a.hostname,a.id
-            """,(rs,n)->new Activo(rs.getLong("id"),rs.getString("hostname"),rs.getString("ubicacion"),
-                rs.getString("cluster"),"SERVIDOR".equals(rs.getString("tipo_activo"))
-                    ? Optional.ofNullable(rs.getString("tipo_servidor")).orElse("RACKEABLE").toLowerCase(Locale.ROOT)
-                    : rs.getString("tipo_activo").toLowerCase(Locale.ROOT),
-                rs.getString("estado_operativo"),rs.getBoolean("mantenimiento_activo"),rs.getString("estado_conexion"),
-                rs.getObject("ultima_actualizacion",LocalDateTime.class),rs.getString("modelo"),
-                rs.getObject("fecha_eos",LocalDate.class),rs.getString("inicio_mantenimiento"),
-                rs.getBigDecimal("cpu_uso"),rs.getBigDecimal("cpu_capacidad"),rs.getBigDecimal("ram_uso"),
-                rs.getBigDecimal("ram_capacidad"),rs.getBigDecimal("almacenamiento_uso"),
-                rs.getBigDecimal("capacidad_total_tb"),rs.getBigDecimal("temperatura_actual")));
-        var centros=jdbc.query("SELECT * FROM datacenters ORDER BY nombre",(rs,n)->
-                new Centro(rs.getString("nombre"),coordenada(rs.getString("latitud")),coordenada(rs.getString("longitud"))));
-        var clusters=jdbc.query("SELECT nombre,datacenter FROM clusters ORDER BY nombre",(rs,n)->
-                new Cluster(rs.getString("nombre"),rs.getString("datacenter")));
-        Map<String,BigDecimal> avisos=new HashMap<>();
-        jdbc.query("SELECT nombre,advertencia FROM umbral",rs->{avisos.put(rs.getString("nombre"),rs.getBigDecimal("advertencia"));});
+        var activos=repository.listarActivos();
+        var centros=repository.listarDatacenters();
+        var clusters=repository.listarClusters();
+        var avisos=repository.advertenciasUmbral();
         var actuales=alertas.listar().stream().collect(Collectors.groupingBy(AlertaActivo::activoId));
-        return new Datos(activos,activos.stream().filter(Activo::considerado).toList(),centros,clusters,actuales,avisos);
+        return new Datos(activos,activos.stream().filter(ResumenInfraestructuraService::considerado).toList(),centros,clusters,actuales,avisos);
     }
 
     public Inicio inicio() {
@@ -170,8 +116,8 @@ public class ResumenInfraestructuraService {
         long criticas=activos.stream().mapToLong(a->contar(d,a,"Crítica")).sum();
         long medias=activos.stream().mapToLong(a->contar(d,a,"Media")).sum();
         return new Grupo(id,nombre,activos.size(),estado(activos,"Encendido"),estado(activos,"Apagado"),estado(activos,"Degradado"),
-            uso(activos.stream().filter(Activo::servidor).toList(),Activo::cpuUso,Activo::cpuCapacidad),
-            uso(activos.stream().filter(Activo::servidor).toList(),Activo::ramUso,Activo::ramCapacidad),
+            uso(activos.stream().filter(ResumenInfraestructuraService::servidor).toList(),Activo::cpuUso,Activo::cpuCapacidad),
+            uso(activos.stream().filter(ResumenInfraestructuraService::servidor).toList(),Activo::ramUso,Activo::ramCapacidad),
             almacenamiento?uso(activos.stream().filter(a->"storage".equals(a.tipo())).toList(),Activo::almacenamientoUso,Activo::almacenamientoCapacidad):null,
             criticas,medias,centro==null?d.clusters().size():d.clusters().stream().filter(c->centro.nombre().equals(c.datacenter())).count(),
             centro==null?null:centro.latitud(),centro==null?null:centro.longitud(),criticas>0?"critical":medias>0?"warning":"good");
@@ -185,11 +131,13 @@ public class ResumenInfraestructuraService {
             if (m>=0) motivo=descripcion.substring(m+10);
         }
         return new Equipo(a.id(),a.hostname(),a.datacenter(),a.cluster(),a.tipo().toUpperCase(Locale.ROOT),TIPOS.get(a.tipo()),a.estado(),
-            a.servidor()?porcentaje(a.cpuUso(),a.cpuCapacidad()):null,a.servidor()?porcentaje(a.ramUso(),a.ramCapacidad()):null,
+            servidor(a)?porcentaje(a.cpuUso(),a.cpuCapacidad()):null,servidor(a)?porcentaje(a.ramUso(),a.ramCapacidad()):null,
             "storage".equals(a.tipo())?porcentaje(a.almacenamientoUso(),a.almacenamientoCapacidad()):null,
             contar(d,a,"Crítica"),contar(d,a,"Media"),ruta(a),alerta==null?null:alerta.descripcion(),alerta==null?null:alerta.severidad(),
             a.modelo(),a.eos(),a.eos()==null?null:ChronoUnit.DAYS.between(LocalDate.now(LIMA),a.eos()),responsable,motivo,utc(a.actualizacion()));
     }
+    private static boolean considerado(Activo a) { return !a.mantenimiento() && !"Baja".equals(a.estado()); }
+    private static boolean servidor(Activo a) { return "rackeable".equals(a.tipo()) || "blade".equals(a.tipo()); }
     private static String ruta(Activo a) {
         return "/inventario/"+switch(a.tipo()) {
             case "rackeable","blade" -> "servidores/"+a.tipo();
@@ -240,7 +188,4 @@ public class ResumenInfraestructuraService {
         return valores.isEmpty()?null:valores.stream().reduce(BigDecimal.ZERO,BigDecimal::add).divide(BigDecimal.valueOf(valores.size()),MathContext.DECIMAL64);
     }
     private static OffsetDateTime utc(LocalDateTime fecha) { return fecha==null?null:fecha.atOffset(ZoneOffset.UTC); }
-    private static BigDecimal coordenada(String v) {
-        try {return v==null?null:new BigDecimal(v.trim());} catch(NumberFormatException ex) {return null;}
-    }
 }

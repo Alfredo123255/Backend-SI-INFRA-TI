@@ -8,7 +8,7 @@ import com.infrati.backendinfrati.model.Rol;
 import com.infrati.backendinfrati.model.Usuario;
 import com.infrati.backendinfrati.repository.RolRepository;
 import com.infrati.backendinfrati.repository.UsuarioRepository;
-import jakarta.persistence.EntityManager;
+import com.infrati.backendinfrati.repository.BloqueoAdministrativoRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,12 +22,12 @@ public class AccesoService {
     private final RolRepository roles;
     private final UsuarioRepository usuarios;
     private final PasswordEncoder encoder;
-    private final EntityManager em;
-    public AccesoService(RolRepository roles,UsuarioRepository usuarios,PasswordEncoder encoder,EntityManager em) {
-        this.roles=roles;this.usuarios=usuarios;this.encoder=encoder;this.em=em;
+    private final BloqueoAdministrativoRepository bloqueos;
+    public AccesoService(RolRepository roles,UsuarioRepository usuarios,PasswordEncoder encoder,BloqueoAdministrativoRepository bloqueos) {
+        this.roles=roles;this.usuarios=usuarios;this.encoder=encoder;this.bloqueos=bloqueos;
     }
     // Serializa todas las modificaciones de acceso, incluso desde varias instancias Java.
-    private void bloquear() { em.createNativeQuery("SELECT pg_advisory_xact_lock(841904004)").getSingleResult(); }
+    private void bloquear() { bloqueos.bloquearCambiosAcceso(); }
     private void exigirAdministradorActivo() {
         if(usuarios.contarAdministradoresActivos()==0)
             throw new RecursoDuplicadoException("Debe permanecer al menos un usuario activo con el permiso administrar_usuarios.");

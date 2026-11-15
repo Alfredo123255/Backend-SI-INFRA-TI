@@ -9,7 +9,7 @@ import com.infrati.backendinfrati.model.HistoricoEstado;
 import com.infrati.backendinfrati.repository.ActivoRepository;
 import com.infrati.backendinfrati.repository.HistoricoEstadoRepository;
 import com.infrati.backendinfrati.repository.MonitoreoSnmpRepository;
-import jakarta.persistence.EntityManager;
+import com.infrati.backendinfrati.repository.BloqueoAdministrativoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,17 +23,17 @@ public class BajaActivoService {
     private final ActivoRepository activos;
     private final MonitoreoSnmpRepository conexiones;
     private final HistoricoEstadoRepository historico;
-    private final EntityManager entityManager;
+    private final BloqueoAdministrativoRepository bloqueos;
 
     public BajaActivoService(ActivoRepository activos, MonitoreoSnmpRepository conexiones,
-            HistoricoEstadoRepository historico, EntityManager entityManager, ReevaluacionAlertas reevaluacion,
+            HistoricoEstadoRepository historico, BloqueoAdministrativoRepository bloqueos, ReevaluacionAlertas reevaluacion,
             CierreAdministrativoAlertasService cierreAlertas) {
         this.reevaluacion=reevaluacion;
         this.cierreAlertas=cierreAlertas;
         this.activos = activos;
         this.conexiones = conexiones;
         this.historico = historico;
-        this.entityManager = entityManager;
+        this.bloqueos = bloqueos;
     }
 
     @Transactional
@@ -47,10 +47,7 @@ public class BajaActivoService {
 
         // El ETL bloquea primero la conexión y luego el activo. Conservamos ese orden
         // para que una lectura SNMP concurrente no deje el activo a medio dar de baja.
-        entityManager.createNativeQuery("SELECT id FROM monitoreo_snmp WHERE activo_id=:id FOR UPDATE")
-                .setParameter("id", id).getResultList();
-        if (entityManager.createNativeQuery("SELECT id FROM activo WHERE id=:id FOR UPDATE")
-                .setParameter("id", id).getResultList().isEmpty()) {
+        if (!bloqueos.bloquearActivoParaBaja(id)) {
             throw new RecursoNoEncontradoException("Activo " + id + " no encontrado");
         }
 
