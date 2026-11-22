@@ -45,8 +45,8 @@ class ClusterServiceTest {
     void rechazaDuplicadosYReferenciasInvalidas() {
         when(datacenters.existsById("DC-LIMA")).thenReturn(true);
         when(clusters.existsById("CLUSTER-NUEVO")).thenReturn(true);
-        assertThrows(RecursoDuplicadoException.class, () -> service.crear(
-                new CrearClusterRequest("CLUSTER-NUEVO", "QA", "DC-LIMA")));
+        assertEquals("El cluster CLUSTER-NUEVO ya existe.", assertThrows(RecursoDuplicadoException.class, () -> service.crear(
+                new CrearClusterRequest("CLUSTER-NUEVO", "QA", "DC-LIMA"))).getMessage());
         assertThrows(RecursoNoEncontradoException.class, () -> service.crear(
                 new CrearClusterRequest("OTRO", "QA", "DC-INEXISTENTE")));
         assertThrows(SolicitudInvalidaException.class, () -> service.crear(
@@ -116,16 +116,17 @@ class ClusterServiceTest {
 
     @Test
     void eliminacionInexistenteYAsignacionConcurrente() {
-        assertThrows(RecursoNoEncontradoException.class, () -> service.eliminar("NO"));
+        assertEquals("Cluster NO no encontrado.", assertThrows(RecursoNoEncontradoException.class, () -> service.eliminar("NO")).getMessage());
         existente();
         doThrow(new DataIntegrityViolationException("FK")).when(clusters).flush();
-        assertThrows(RecursoDuplicadoException.class, () -> service.eliminar("CL"));
+        assertEquals("No se puede eliminar el cluster porque tiene equipos asociados. Reasígnalos antes de eliminarlo.",
+                assertThrows(RecursoDuplicadoException.class, () -> service.eliminar("CL")).getMessage());
     }
 
     @Test
     void rechazaNombreYCamposVacios() {
         assertThrows(SolicitudInvalidaException.class, () -> service.crear(new CrearClusterRequest(" ", "QA", "DC")));
         assertThrows(SolicitudInvalidaException.class, () -> service.crear(new CrearClusterRequest("CL", "", "DC")));
-        assertThrows(SolicitudInvalidaException.class, () -> service.crear(null));
+        assertEquals("Envía los datos del cluster.", assertThrows(SolicitudInvalidaException.class, () -> service.crear(null)).getMessage());
     }
 }

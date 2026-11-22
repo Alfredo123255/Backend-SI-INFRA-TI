@@ -36,23 +36,23 @@ public class ClusterService {
 
     @Transactional
     public ClusterRespuesta crear(CrearClusterRequest solicitud) {
-        if (solicitud == null) throw new SolicitudInvalidaException("Debe enviar los datos del clúster.");
+        if (solicitud == null) throw new SolicitudInvalidaException("Envía los datos del cluster.");
         String nombre = ValidacionEntornos.requerido(solicitud.nombre(), "nombre", 100);
         AmbienteEnum ambiente = ambiente(solicitud.ambiente());
         String datacenter = datacenter(solicitud.datacenter());
-        if (clusters.existsById(nombre)) throw new RecursoDuplicadoException("El clúster " + nombre + " ya existe.");
+        if (clusters.existsById(nombre)) throw new RecursoDuplicadoException("El cluster " + nombre + " ya existe.");
         try {
             return aRespuesta(clusters.saveAndFlush(Cluster.builder()
                     .nombre(nombre).ambiente(ambiente).datacenter(datacenter).build()));
         } catch (DataIntegrityViolationException error) {
-            throw new RecursoDuplicadoException("No se pudo crear el clúster; verifica que el nombre sea único y el datacenter exista.");
+            throw new RecursoDuplicadoException("No se pudo crear el cluster; verifica que el nombre sea único y el datacenter exista.");
         }
     }
 
     @Transactional
     public ClusterRespuesta actualizar(String nombre, ActualizarClusterRequest solicitud) {
         Cluster cluster = buscar(nombre);
-        if (solicitud == null) throw new SolicitudInvalidaException("Debe enviar los datos del clúster.");
+        if (solicitud == null) throw new SolicitudInvalidaException("Envía los datos del cluster.");
         AmbienteEnum ambiente = ambiente(solicitud.ambiente());
         String datacenter = datacenter(solicitud.datacenter());
         cluster.setAmbiente(ambiente);
@@ -60,7 +60,7 @@ public class ClusterService {
         try {
             return aRespuesta(clusters.saveAndFlush(cluster));
         } catch (DataIntegrityViolationException error) {
-            throw new RecursoDuplicadoException("No se pudo actualizar el clúster; verifica que el datacenter exista.");
+            throw new RecursoDuplicadoException("No se pudo actualizar el cluster; verifica que el datacenter exista.");
         }
     }
 
@@ -75,12 +75,12 @@ public class ClusterService {
             clusters.flush();
         } catch (DataIntegrityViolationException error) {
             // La FK también protege frente a asignaciones concurrentes. Nunca se elimina en cascada.
-            throw new RecursoDuplicadoException("No se puede eliminar el clúster porque tiene equipos asociados. Reasígnalos antes de eliminarlo.");
+            throw new RecursoDuplicadoException("No se puede eliminar el cluster porque tiene equipos asociados. Reasígnalos antes de eliminarlo.");
         }
     }
 
     private Cluster buscar(String nombre) {
-        return clusters.findById(nombre).orElseThrow(() -> new RecursoNoEncontradoException("Clúster " + nombre + " no encontrado."));
+        return clusters.findById(nombre).orElseThrow(() -> new RecursoNoEncontradoException("Cluster " + nombre + " no encontrado."));
     }
 
     private String datacenter(String valor) {

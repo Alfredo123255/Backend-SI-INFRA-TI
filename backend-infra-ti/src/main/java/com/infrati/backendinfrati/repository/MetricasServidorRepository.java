@@ -95,8 +95,8 @@ public class MetricasServidorRepository {
                 """, (rs, n) -> new Opcion(rs.getLong(1), rs.getString(2)), tipo, tipo, tipo, tipo, id);
     }
 
-    // La capacidad corresponde a la última actualización completada por el ETL.
-    // Ante duplicados del mismo componente se conserva la última fila de esa lectura.
+    // La capacidad corresponde a la Ãºltima actualizaciÃ³n completada por el ETL.
+    // Ante duplicados del mismo componente se conserva la Ãºltima fila de esa lectura.
     public BigDecimal capacidadRedGbps(long id) {
         return jdbc.queryForObject("""
                 SELECT sum(ultima.valor) / 1000
@@ -198,23 +198,39 @@ public class MetricasServidorRepository {
     }
 
     public List<Lectura> actualesSwitch(long id) {
+        // La fecha se busca entre las filas elegibles; después se agrega solo esa lectura.
         String sql = """
-                WITH por_instante AS (
-                    SELECT m.nombre_metrica, m.fecha_medicion,
-                           CASE WHEN m.nombre_metrica='red_utilizacion_pct' THEN max(m.valor) ELSE sum(m.valor) END AS valor
-                    FROM metrica_historica m JOIN activo a ON a.id=m.activo_id
-                    WHERE m.activo_id=? AND m.nombre_metrica=ANY(?::text[])
-                      AND (m.componente_tipo IS NULL OR (m.fecha_medicion=a.ultima_actualizacion
-                           AND EXISTS (SELECT 1 FROM puerto_switch p WHERE p.switch_id=a.id
-                                       AND p.numero_puerto=m.componente_serial AND p.estado<>'Apagado')))
+                WITH ultimas AS (
+                    SELECT n.nombre,u.fecha_medicion
+                    FROM unnest(?::text[]) n(nombre)
+                    JOIN LATERAL (
+                        SELECT m.fecha_medicion
+                        FROM metrica_historica m JOIN activo a ON a.id=m.activo_id
+                        WHERE m.activo_id=? AND m.nombre_metrica=n.nombre
+                          AND (m.componente_tipo IS NULL OR (m.fecha_medicion=a.ultima_actualizacion
+                               AND EXISTS (SELECT 1 FROM puerto_switch p WHERE p.switch_id=a.id
+                                           AND p.numero_puerto=m.componente_serial AND p.estado<>'Apagado')))
                 """ + FILTRO_SWITCH + """
-                    GROUP BY m.nombre_metrica, m.fecha_medicion
+                        ORDER BY m.fecha_medicion DESC LIMIT 1
+                    ) u ON true
                 )
-                SELECT DISTINCT ON(nombre_metrica) nombre_metrica, fecha_medicion, valor
-                FROM por_instante ORDER BY nombre_metrica, fecha_medicion DESC
+                SELECT m.nombre_metrica,m.fecha_medicion,
+                       CASE WHEN m.nombre_metrica='red_utilizacion_pct' THEN max(m.valor) ELSE sum(m.valor) END AS valor
+                FROM ultimas u JOIN metrica_historica m
+                  ON m.nombre_metrica=u.nombre AND m.fecha_medicion=u.fecha_medicion
+                JOIN activo a ON a.id=m.activo_id
+                WHERE m.activo_id=?
+                  AND (m.componente_tipo IS NULL OR (m.fecha_medicion=a.ultima_actualizacion
+                       AND EXISTS (SELECT 1 FROM puerto_switch p WHERE p.switch_id=a.id
+                                   AND p.numero_puerto=m.componente_serial AND p.estado<>'Apagado')))
+                """ + FILTRO_SWITCH + """
+                GROUP BY m.nombre_metrica,m.fecha_medicion
+                ORDER BY m.nombre_metrica,m.fecha_medicion DESC
                 """;
         return jdbc.query(c -> {
-            var ps=c.prepareStatement(sql); ps.setLong(1,id); ps.setArray(2,nombres(c,METRICAS_SWITCH)); return ps;
+            var ps=c.prepareStatement(sql);
+            ps.setArray(1,nombres(c,METRICAS_SWITCH));ps.setLong(2,id);ps.setLong(3,id);
+            return ps;
         }, (rs,n)->new Lectura(rs.getString(1),rs.getObject(2,LocalDateTime.class),rs.getBigDecimal(3)));
     }
 
